@@ -1,36 +1,48 @@
 use crate::amm;
 use crate::common;
 use amm::{openbook, utils::AmmKeys};
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use arrayref::array_ref;
 use common::rpc;
 use raydium_amm::math::{CheckedCeilDiv, U128};
+use raydium_amm::state::TEN_THOUSAND;
 use safe_transmute::{to_bytes::transmute_to_bytes, transmute_one_pedantic};
 use solana_client::rpc_client::RpcClient;
 use solana_program::{account_info::IntoAccountInfo, program_pack::Pack};
 use solana_sdk::{
     commitment_config::CommitmentConfig, message::Message, pubkey::Pubkey, transaction::Transaction,
 };
+use std::convert::TryFrom;
 
 use super::CalculateMethod;
 use super::CalculateResult;
 
-pub const TEN_THOUSAND: u64 = 10000;
+fn max_amount_with_slippage(input_amount: u64, slippage_bps: u64) -> Result<u64> {
+    let ten_thousand = U128::from(TEN_THOUSAND);
+    let input_amount = U128::from(input_amount);
+    let slippage_bps = U128::from(slippage_bps);
 
-fn max_amount_with_slippage(input_amount: u64, slippage_bps: u64) -> u64 {
-    input_amount
-        .checked_mul(slippage_bps.checked_add(TEN_THOUSAND).unwrap())
-        .unwrap()
-        .checked_div(TEN_THOUSAND)
-        .unwrap()
+    let result = slippage_bps
+        .checked_add(ten_thousand)
+        .and_then(|scale| input_amount.checked_mul(scale))
+        .and_then(|scaled| scaled.checked_div(ten_thousand))
+        .ok_or_else(|| anyhow!("U128 too big or negative"))?;
+
+    u64::try_from(result).map_err(|err| anyhow!("U128 to u64 overflow: {err}"))
 }
 
-fn min_amount_with_slippage(input_amount: u64, slippage_bps: u64) -> u64 {
-    input_amount
-        .checked_mul(TEN_THOUSAND.checked_sub(slippage_bps).unwrap())
-        .unwrap()
-        .checked_div(TEN_THOUSAND)
-        .unwrap()
+fn min_amount_with_slippage(input_amount: u64, slippage_bps: u64) -> Result<u64> {
+    let ten_thousand = U128::from(TEN_THOUSAND);
+    let input_amount = U128::from(input_amount);
+    let slippage_bps = U128::from(slippage_bps);
+
+    let result = ten_thousand
+        .checked_sub(slippage_bps)
+        .and_then(|scale| input_amount.checked_mul(scale))
+        .and_then(|scaled| scaled.checked_div(ten_thousand))
+        .ok_or_else(|| anyhow!("U128 too big or negative"))?;
+
+    u64::try_from(result).map_err(|err| anyhow!("U128 to u64 overflow: {err}"))
 }
 
 // pool_vault_amount = vault_amount + open_orders.native_total + partial filled without consumed - amm.need_take
@@ -353,11 +365,11 @@ pub fn deposit_amount_with_slippage(
     match base_side {
         0 => {
             let max_coin_amout = input_amount;
-            let max_pc_amount = max_amount_with_slippage(another_amount, slippage_bps);
+            let max_pc_amount = max_amount_with_slippage(another_amount, slippage_bps)?;
             return Ok((max_coin_amout, max_pc_amount));
         }
         _ => {
-            let max_coin_amount = max_amount_with_slippage(another_amount, slippage_bps);
+            let max_coin_amount = max_amount_with_slippage(another_amount, slippage_bps)?;
             let max_pc_amount = input_amount;
             return Ok((max_coin_amount, max_pc_amount));
         }
@@ -405,10 +417,10 @@ pub fn swap_with_slippage(
     )?;
     let other_amount_threshold = if swap_base_in {
         // min out
-        min_amount_with_slippage(other_amount_threshold, slippage_bps)
+        min_amount_with_slippage(other_amount_threshold, slippage_bps)?
     } else {
         // max in
-        max_amount_with_slippage(other_amount_threshold, slippage_bps)
+        max_amount_with_slippage(other_amount_threshold, slippage_bps)?
     };
     Ok(other_amount_threshold)
 }

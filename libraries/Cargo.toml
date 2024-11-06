@@ -1,20 +1,35 @@
 [package]
 name = "raydium-library"
-version = "0.3.0"
+version = "0.1.0"
 edition = "2018"
+
+[features]
+default = ["mainnet"]
+mainnet = []
+devnet = [
+    "raydium-amm-v3/devnet",
+    "raydium-cp-swap/devnet",
+    "raydium_amm/devnet",
+]
 
 [dependencies]
 anchor-client = "0.29.0"
 anchor-lang = "0.29.0"
 raydium-amm-v3 = { git = "https://github.com/raydium-io/raydium-clmm", features = [
-    "no-entrypoint",
     "client",
+    "no-entrypoint",
+] }
+raydium-cp-swap = { git = "https://github.com/raydium-io/raydium-cp-swap", features = [
+    "client",
+    "no-entrypoint",
 ] }
 serum_dex = { version = "0.5.10", git = "https://github.com/raydium-io/openbook-dex", default-features = false, features = [
     "client",
+    "no-entrypoint",
 ] }
 raydium_amm = { git = "https://github.com/raydium-io/raydium-amm", default-features = false, features = [
     "client",
+    "no-entrypoint",
 ] }
 spl-token = { version = "4.0.0", features = ["no-entrypoint"] }
 spl-associated-token-account = { version = "2.2.0", features = [
@@ -26,6 +41,7 @@ spl-memo = "4.0.0"
 solana-program = "<1.17.0"
 solana-client = "<1.17.0"
 solana-sdk = "<1.17.0"
+solana-cli-config = "<1.17.0"
 solana-account-decoder = "<1.17.0"
 solana-transaction-status = "<1.17.0"
 anyhow = "1.0.53"
@@ -40,6 +56,8 @@ bincode = { version = "1.3.3" }
 debug_print = "1.0.0"
 arrayref = "0.3.6"
 uint = "0.9.5"
+clap = { version = "4.1.8", features = ["derive"] }
+toml = "0.8.19"
 
 [lib]
 crate-type = ["cdylib", "lib"]

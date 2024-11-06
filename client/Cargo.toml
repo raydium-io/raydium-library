@@ -1,12 +1,16 @@
 [package]
-name = "client"
+name = "raydium-cli"
 version = "0.1.0"
 edition = "2018"
 
 [[bin]]
-name = "client"
+name = "raydium"
 path = "src/main.rs"
 
+[features]
+default = ["mainnet"]
+mainnet = ["raydium-library/mainnet"]
+devnet = ["raydium-library/devnet"]
 
 [dependencies]
 raydium-library = { path = "../libraries" }
@@ -18,3 +22,4 @@ spl-token-2022 = { version = "0.9.0", features = ["no-entrypoint"] }
 solana-client = "<1.17.0"
 solana-sdk = "<1.17.0"
 anyhow = "1.0.53"
+clap = { version = "4.1.8", features = ["derive"] }

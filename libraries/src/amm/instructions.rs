@@ -1,6 +1,6 @@
 use crate::amm;
 use amm::openbook;
-use amm::utils::AmmKeys;
+use amm::types::AmmKeys;
 use anyhow::Result;
 use solana_sdk::{instruction::Instruction, pubkey::Pubkey};
 
@@ -73,6 +73,7 @@ pub fn deposit(
         max_coin_amount,
         max_pc_amount,
         base_side,
+        None,
     )?;
     Ok(deposit_instruction)
 }
@@ -110,6 +111,8 @@ pub fn withdraw(
         &market_keys.asks,
         None,
         withdraw_lp_amount,
+        None,
+        None,
     )?;
     Ok(withdraw_instruction)
 }

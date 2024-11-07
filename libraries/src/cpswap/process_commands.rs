@@ -1,7 +1,5 @@
 use crate::common;
 use crate::cpswap;
-use anchor_client::Client;
-use anyhow::Ok;
 use anyhow::Result;
 use clap::Parser;
 use rand::rngs::OsRng;
@@ -14,7 +12,7 @@ use solana_sdk::{
     pubkey::Pubkey,
     signer::{keypair::Keypair, Signer},
 };
-use std::{rc::Rc, sync::Arc};
+use std::sync::Arc;
 
 #[derive(Debug, Parser)]
 pub enum CpSwapCommands {
@@ -66,10 +64,8 @@ pub enum CpSwapCommands {
         #[clap(short, long)]
         amount_specified: u64,
         /// Indicates which token is specified of the `amount_specified`.
-        /// true: indicates token0;
-        /// false: indicates token1;
-        #[clap(short, long)]
-        base_token0: bool,
+        #[clap(short, long, action)]
+        base_token1: bool,
     },
     Withdraw {
         /// The specified pool of the assets withdraw from.
@@ -139,11 +135,6 @@ pub fn process_cpswap_commands(
     if !signing_keypairs.contains(&payer) {
         signing_keypairs.push(payer);
     }
-
-    let cluster = config.cluster();
-    let wallet = common::utils::read_keypair_file(&config.wallet())?;
-    let anchor_client = Client::new(cluster, Rc::new(wallet));
-    let program = anchor_client.program(config.cp_program())?;
 
     match command {
         CpSwapCommands::CreatePool {
@@ -230,8 +221,9 @@ pub fn process_cpswap_commands(
             deposit_token1,
             recipient_token_lp,
             amount_specified,
-            base_token0,
+            base_token1,
         } => {
+            let base_token0 = !base_token1;
             let result = cpswap::utils::add_liquidity_calculate(
                 &rpc_client,
                 pool_id,
@@ -433,7 +425,11 @@ pub fn process_cpswap_commands(
         } => {
             if let Some(pool_id) = pool_id {
                 // fetch specified pool
-                let pool_state: raydium_cp_swap::states::PoolState = program.account(pool_id)?;
+                let pool_state = common::rpc::get_anchor_account::<
+                    raydium_cp_swap::states::PoolState,
+                >(&rpc_client, &pool_id)
+                .unwrap()
+                .unwrap();
                 println!("{:#?}", pool_state);
             } else {
                 // fetch pool by filters
@@ -488,8 +484,11 @@ pub fn process_cpswap_commands(
             let mut config_info = "".to_string();
             if let Some(amm_config) = amm_config {
                 // fetch specified amm_config
-                let amm_config_state: raydium_cp_swap::states::AmmConfig =
-                    program.account(amm_config)?;
+                let amm_config_state = common::rpc::get_anchor_account::<
+                    raydium_cp_swap::states::AmmConfig,
+                >(&rpc_client, &amm_config)
+                .unwrap()
+                .unwrap();
                 // println!("{:#?}", amm_config_state);
                 let trade_fee_rate =
                     amm_config_state.trade_fee_rate as f64 / common::types::TEN_THOUSAND as f64;

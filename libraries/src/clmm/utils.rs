@@ -124,8 +124,8 @@ pub fn calculate_liquidity_change(
         amount_0, amount_1, liquidity
     );
     // calc with slippage
-    let amount_0_with_slippage = utils::amount_with_slippage(amount_0, slippage_bps, true);
-    let amount_1_with_slippage = utils::amount_with_slippage(amount_1, slippage_bps, true);
+    let amount_0_with_slippage = utils::amount_with_slippage(amount_0, slippage_bps, true)?;
+    let amount_1_with_slippage = utils::amount_with_slippage(amount_1, slippage_bps, true)?;
     // calc with transfer_fee
     let transfer_fee = utils::get_pool_mints_inverse_fee(
         &rpc_client,
@@ -138,10 +138,10 @@ pub fn calculate_liquidity_change(
         "transfer_fee_0:{}, transfer_fee_1:{}",
         transfer_fee.0.transfer_fee, transfer_fee.1.transfer_fee
     );
-    let amount_0_max = (amount_0_with_slippage as u64)
+    let amount_0_max = amount_0_with_slippage
         .checked_add(transfer_fee.0.transfer_fee)
         .unwrap();
-    let amount_1_max = (amount_1_with_slippage as u64)
+    let amount_1_max = amount_1_with_slippage
         .checked_add(transfer_fee.1.transfer_fee)
         .unwrap();
 
@@ -285,11 +285,11 @@ pub fn calculate_swap_change(
     if base_in {
         // calc mint out amount with slippage
         other_amount_threshold =
-            utils::amount_with_slippage(other_amount_threshold, slippage_bps, false);
+            utils::amount_with_slippage(other_amount_threshold, slippage_bps, false)?;
     } else {
         // calc max in with slippage
         other_amount_threshold =
-            utils::amount_with_slippage(other_amount_threshold, slippage_bps, true);
+            utils::amount_with_slippage(other_amount_threshold, slippage_bps, true)?;
         // calc max in with transfer_fee
         let transfer_fee = if zero_for_one {
             utils::get_transfer_inverse_fee(&mint0_state, epoch, other_amount_threshold)

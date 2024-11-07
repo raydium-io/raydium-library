@@ -123,7 +123,7 @@ pub fn add_liquidity_calculate(
     };
     // calc liquidity with slippage
     let liquidity_slippage =
-        common::utils::amount_with_slippage(liquidity as u64, slippage_bps, false);
+        common::utils::amount_with_slippage(liquidity as u64, slippage_bps, false)?;
 
     let (amount_0_max, amount_1_max) = if base_token0 {
         (amount_specified, another_amount)
@@ -197,9 +197,9 @@ pub fn remove_liquidity_calculate(
     );
     // calc with slippage
     let amount_0_with_slippage =
-        common::utils::amount_with_slippage(results.token_0_amount as u64, slippage_bps, true);
+        common::utils::amount_with_slippage(results.token_0_amount as u64, slippage_bps, true)?;
     let amount_1_with_slippage =
-        common::utils::amount_with_slippage(results.token_1_amount as u64, slippage_bps, true);
+        common::utils::amount_with_slippage(results.token_1_amount as u64, slippage_bps, true)?;
     // calc with transfer_fee
     let transfer_fee_0 =
         common::utils::get_transfer_inverse_fee(&token_0_mint_info, epoch, amount_0_with_slippage);
@@ -363,7 +363,8 @@ pub fn swap_calculate(
         };
         let amount_received = amount_out.checked_sub(transfer_fee).unwrap();
         // calc mint out amount with slippage
-        let minimum_amount_out = common::amount_with_slippage(amount_received, slippage_bps, false);
+        let minimum_amount_out =
+            common::amount_with_slippage(amount_received, slippage_bps, false)?;
         minimum_amount_out
     } else {
         // Take transfer fees into account for actual amount user received
@@ -393,7 +394,8 @@ pub fn swap_calculate(
             .checked_add(amount_in_transfer_fee)
             .unwrap();
         // calc max in with slippage
-        let max_amount_in = common::amount_with_slippage(input_transfer_amount, slippage_bps, true);
+        let max_amount_in =
+            common::amount_with_slippage(input_transfer_amount, slippage_bps, true)?;
         max_amount_in
     };
 

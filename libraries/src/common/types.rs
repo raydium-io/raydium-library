@@ -1,7 +1,6 @@
 use anchor_client::Cluster;
 use anyhow::Result;
 use clap::Parser;
-use serde::Deserialize;
 use solana_sdk::pubkey::Pubkey;
 use spl_token_2022::extension::{
     confidential_transfer::{ConfidentialTransferAccount, ConfidentialTransferMint},
@@ -43,7 +42,7 @@ pub enum ExtensionStruct {
     TransferFeeAmount(TransferFeeAmount),
 }
 
-pub const TEN_THOUSAND: u64 = 10000;
+pub const TEN_THOUSAND: u128 = 10000;
 #[derive(Debug)]
 pub struct TransferFeeInfo {
     pub mint: Pubkey,
@@ -51,20 +50,7 @@ pub struct TransferFeeInfo {
     pub transfer_fee: u64,
 }
 
-// fn deserialize_pubkey<'de, D>(deserializer: D) -> Result<Option<Pubkey>, D::Error>
-// where
-//     D: serde::Deserializer<'de>,
-// {
-//     let opt_str: Option<String> = Option::deserialize(deserializer)?;
-//     match opt_str {
-//         Some(s) => Pubkey::from_str(&s)
-//             .map(Some)
-//             .map_err(serde::de::Error::custom),
-//         None => Ok(None),
-//     }
-// }
-
-#[derive(Clone, Debug, Parser, Deserialize)]
+#[derive(Clone, Debug, Parser)]
 pub struct CommonConfig {
     #[clap(global = true, long = "config.http")]
     http_url: Option<String>,
@@ -72,16 +58,12 @@ pub struct CommonConfig {
     ws_url: Option<String>,
     #[clap(global = true, long = "config.wallet")]
     wallet_path: Option<String>,
-    // #[serde(default, deserialize_with = "deserialize_pubkey")]
     #[clap(global = true, long = "config.clmm_program")]
     raydium_clmm_program: Option<Pubkey>,
-    // #[serde(default, deserialize_with = "deserialize_pubkey")]
     #[clap(global = true, long = "config.cp_program")]
     raydium_cp_swap_program: Option<Pubkey>,
-    // #[serde(default, deserialize_with = "deserialize_pubkey")]
     #[clap(global = true, long = "config.amm_program")]
     raydium_amm_program: Option<Pubkey>,
-    // #[serde(default, deserialize_with = "deserialize_pubkey")]
     #[clap(global = true, long = "config.openbook_program")]
     openbook_program: Option<Pubkey>,
     #[clap(global = true, long = "config.slippage")]
@@ -94,15 +76,9 @@ impl Default for CommonConfig {
         CommonConfig {
             http_url: Some("https://api.mainnet-beta.solana.com".to_string()),
             ws_url: Some("wss://api.mainnet-beta.solana.com".to_string()),
-            wallet_path: Some(
-                if let Some(config_file) = &*solana_cli_config::CONFIG_FILE {
-                    solana_cli_config::Config::load(config_file)
-                        .unwrap_or_default()
-                        .keypair_path
-                } else {
-                    solana_cli_config::Config::default().keypair_path
-                },
-            ),
+            // Default is empty.
+            // Must be specified by user, as setting a default wallet may be dangerous.
+            wallet_path: Some("".to_string()),
             raydium_clmm_program: Some(
                 Pubkey::from_str("CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK").unwrap(),
             ),
@@ -123,15 +99,9 @@ impl Default for CommonConfig {
         CommonConfig {
             http_url: Some("https://api.mainnet-beta.solana.com".to_string()),
             ws_url: Some("wss://api.devnet.solana.com".to_string()),
-            wallet_path: Some(
-                if let Some(config_file) = &*solana_cli_config::CONFIG_FILE {
-                    solana_cli_config::Config::load(config_file)
-                        .unwrap_or_default()
-                        .keypair_path
-                } else {
-                    solana_cli_config::Config::default().keypair_path
-                },
-            ),
+            // Default is empty.
+            // Must be specified by user, as setting a default wallet may be dangerous.
+            wallet_path: Some("".to_string()),
             raydium_clmm_program: Some(
                 Pubkey::from_str("devi51mZmdwUJGU9hjN27vEz64Gps7uUefqxg27EAtH").unwrap(),
             ),
@@ -248,26 +218,13 @@ impl CommonConfig {
     }
 
     pub fn cluster(&self) -> Cluster {
-        let http_url = if self.http_url.is_none() {
-            "".to_string()
-        } else {
-            self.clone().http_url.unwrap()
-        };
-        let ws_url = if self.ws_url.is_none() {
-            "".to_string()
-        } else {
-            self.clone().ws_url.unwrap()
-        };
+        let http_url = self.clone().http_url.unwrap_or("".to_string());
+        let ws_url = self.clone().ws_url.unwrap_or("".to_string());
         Cluster::Custom(http_url, ws_url)
     }
 
     pub fn wallet(&self) -> String {
-        let wallet_path = if self.wallet_path.is_none() {
-            "".to_string()
-        } else {
-            self.clone().wallet_path.unwrap()
-        };
-        return wallet_path;
+        self.clone().wallet_path.unwrap_or("".to_string())
     }
 
     pub fn clmm_program(&self) -> Pubkey {

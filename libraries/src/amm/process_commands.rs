@@ -66,9 +66,7 @@ pub enum AmmCommands {
         #[clap(short, long, action)]
         another_min_limit: bool,
         /// Indicates which token is specified of the `amount_specified`.
-        /// true: indicates token coin;
-        /// false: indicates token pc;
-        #[arg(short, long)]
+        #[arg(short, long, action)]
         base_coin: bool,
     },
     Withdraw {

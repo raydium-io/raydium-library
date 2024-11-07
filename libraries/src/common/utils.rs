@@ -23,9 +23,12 @@ use spl_token_2022::{
     },
     state::{Account, Mint},
 };
+use std::convert::TryFrom;
 
-pub fn amount_with_slippage(amount: u64, slippage_bps: u64, up_towards: bool) -> u64 {
-    if up_towards {
+pub fn amount_with_slippage(amount: u64, slippage_bps: u64, up_towards: bool) -> Result<u64> {
+    let amount = amount as u128;
+    let slippage_bps = slippage_bps as u128;
+    let amount_with_slippage = if up_towards {
         amount
             .checked_mul(slippage_bps.checked_add(TEN_THOUSAND).unwrap())
             .unwrap()
@@ -37,7 +40,9 @@ pub fn amount_with_slippage(amount: u64, slippage_bps: u64, up_towards: bool) ->
             .unwrap()
             .checked_div(TEN_THOUSAND)
             .unwrap()
-    }
+    };
+    u64::try_from(amount_with_slippage)
+        .map_err(|_| format_err!("failed to read keypair from {}", amount_with_slippage))
 }
 
 pub fn read_keypair_file(s: &str) -> Result<Keypair> {

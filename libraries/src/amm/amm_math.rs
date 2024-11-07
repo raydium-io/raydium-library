@@ -158,26 +158,26 @@ pub fn deposit_amount_with_slippage(
     match base_side {
         0 => {
             let max_coin_amout = amount_specified;
-            let max_pc_amount = common::amount_with_slippage(another_amount, slippage_bps, true);
+            let max_pc_amount = common::amount_with_slippage(another_amount, slippage_bps, true)?;
             let min_pc_amount = if another_min_limit {
                 Some(common::amount_with_slippage(
                     another_amount,
                     slippage_bps,
                     false,
-                ))
+                )?)
             } else {
                 None
             };
             return Ok((max_coin_amout, max_pc_amount, min_pc_amount));
         }
         _ => {
-            let max_coin_amount = common::amount_with_slippage(another_amount, slippage_bps, true);
+            let max_coin_amount = common::amount_with_slippage(another_amount, slippage_bps, true)?;
             let min_coin_amount = if another_min_limit {
                 Some(common::amount_with_slippage(
                     another_amount,
                     slippage_bps,
                     false,
-                ))
+                )?)
             } else {
                 None
             };
@@ -203,9 +203,9 @@ pub fn withdraw_amounts_with_slippage(
                 withdraw_lp_amount,
             )?;
             let receive_min_pc_amount =
-                common::amount_with_slippage(receive_pc_amount, slippage_bps, false);
+                common::amount_with_slippage(receive_pc_amount, slippage_bps, false)?;
             let receive_min_coin_amount =
-                common::amount_with_slippage(receive_coin_amount, slippage_bps, false);
+                common::amount_with_slippage(receive_coin_amount, slippage_bps, false)?;
             (Some(receive_min_coin_amount), Some(receive_min_pc_amount))
         } else {
             (None, None)
@@ -235,10 +235,10 @@ pub fn swap_with_slippage(
     )?;
     let other_amount_threshold = if swap_base_in {
         // min out
-        common::amount_with_slippage(other_amount_threshold, slippage_bps, false)
+        common::amount_with_slippage(other_amount_threshold, slippage_bps, false)?
     } else {
         // max in
-        common::amount_with_slippage(other_amount_threshold, slippage_bps, true)
+        common::amount_with_slippage(other_amount_threshold, slippage_bps, true)?
     };
     Ok(other_amount_threshold)
 }

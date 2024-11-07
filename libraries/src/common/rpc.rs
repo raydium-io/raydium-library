@@ -15,26 +15,14 @@ use solana_sdk::{
 };
 use solana_transaction_status::UiTransactionEncoding;
 
-// use std::sync::Arc;
-
 pub fn build_txn(
     client: &RpcClient,
     instructions: &[Instruction],
     signing_keypairs: &dyn Signers,
-    // payer: &Arc<dyn Signer>,
 ) -> Result<Transaction> {
-    // let payer_key = payer.pubkey();
-    // let fee_payer = Some(&payer_key);
     let blockhash = client.get_latest_blockhash().unwrap();
     let message = Message::new_with_blockhash(&instructions, None, &blockhash);
     let mut transaction = Transaction::new_unsigned(message);
-    // let signing_pubkeys = signing_keypairs.pubkeys();
-
-    // if !signing_pubkeys.contains(&payer_key) {
-    //     transaction
-    //         .try_partial_sign(&vec![payer.clone()], blockhash)
-    //         .unwrap();
-    // }
     transaction
         .try_partial_sign(signing_keypairs, blockhash)
         .unwrap();

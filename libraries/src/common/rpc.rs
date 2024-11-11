@@ -1,5 +1,6 @@
 use anchor_lang::AccountDeserialize;
 use anyhow::Result;
+use base64::{prelude::BASE64_STANDARD, Engine};
 use solana_account_decoder::UiAccountEncoding;
 use solana_client::{
     rpc_client::RpcClient,
@@ -18,11 +19,13 @@ use solana_transaction_status::UiTransactionEncoding;
 pub fn build_txn(
     client: &RpcClient,
     instructions: &[Instruction],
+    fee_payer: &Pubkey,
     signing_keypairs: &dyn Signers,
 ) -> Result<Transaction> {
     let blockhash = client.get_latest_blockhash().unwrap();
-    let message = Message::new_with_blockhash(&instructions, None, &blockhash);
+    let message = Message::new_with_blockhash(&instructions, Some(fee_payer), &blockhash);
     let mut transaction = Transaction::new_unsigned(message);
+
     transaction
         .try_partial_sign(signing_keypairs, blockhash)
         .unwrap();
@@ -46,7 +49,12 @@ pub fn simulate_transaction(
     sig_verify: bool,
     cfg: CommitmentConfig,
 ) -> RpcResult<RpcSimulateTransactionResult> {
-    let serialized_encoded = base64::encode(bincode::serialize(transaction).unwrap());
+    let serialized = bincode::serialize(transaction)
+        .map_err(|e| (format!("Serialization failed: {e}")))
+        .unwrap();
+    let serialized_encoded = BASE64_STANDARD.encode(serialized);
+    println!("{}", serialized_encoded);
+
     client.send(
         RpcRequest::SimulateTransaction,
         serde_json::json!([serialized_encoded, {

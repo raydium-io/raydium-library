@@ -33,17 +33,16 @@ pub fn calculate_deposit_info(
     let accounts = array_ref![rsps, 0, 4];
     let [amm_account, amm_target_account, amm_pc_vault_account, amm_coin_vault_account] = accounts;
 
-    let amm_account_data = &amm_account.clone().unwrap().data;
-    let amm_target_account_data = &amm_target_account.clone().unwrap().data;
-    let amm_pc_vault_data = &amm_pc_vault_account.clone().unwrap().data;
-    let amm_coin_vault_data = &amm_coin_vault_account.clone().unwrap().data;
-
-    let amm_state = raydium_amm::state::AmmInfo::load_from_bytes(amm_account_data).unwrap();
+    let amm_state =
+        raydium_amm::state::AmmInfo::load_from_bytes(&amm_account.as_ref().unwrap().data).unwrap();
     let mut amm_state = amm_state.clone();
-    let amm_target_state =
-        raydium_amm::state::TargetOrders::load_from_bytes(amm_target_account_data).unwrap();
-    let amm_pc_vault = common::unpack_token(amm_pc_vault_data).unwrap();
-    let amm_coin_vault = common::unpack_token(amm_coin_vault_data).unwrap();
+    let amm_target_state = raydium_amm::state::TargetOrders::load_from_bytes(
+        &amm_target_account.as_ref().unwrap().data,
+    )
+    .unwrap();
+    let amm_pc_vault = common::unpack_token(&amm_pc_vault_account.as_ref().unwrap().data).unwrap();
+    let amm_coin_vault =
+        common::unpack_token(&amm_coin_vault_account.as_ref().unwrap().data).unwrap();
 
     // assert for amm not share any liquidity to openbook
     assert_eq!(
@@ -117,17 +116,16 @@ pub fn calculate_withdraw_info(
     let accounts = array_ref![rsps, 0, 4];
     let [amm_account, amm_target_account, amm_pc_vault_account, amm_coin_vault_account] = accounts;
 
-    let amm_account_data = &amm_account.clone().unwrap().data;
-    let amm_target_account_data = &amm_target_account.clone().unwrap().data;
-    let amm_pc_vault_data = &amm_pc_vault_account.clone().unwrap().data;
-    let amm_coin_vault_data = &amm_coin_vault_account.clone().unwrap().data;
-
-    let amm_state = raydium_amm::state::AmmInfo::load_from_bytes(amm_account_data).unwrap();
+    let amm_state =
+        raydium_amm::state::AmmInfo::load_from_bytes(&amm_account.as_ref().unwrap().data).unwrap();
     let mut amm_state = amm_state.clone();
-    let amm_target_state =
-        raydium_amm::state::TargetOrders::load_from_bytes(amm_target_account_data).unwrap();
-    let amm_pc_vault = common::unpack_token(amm_pc_vault_data).unwrap();
-    let amm_coin_vault = common::unpack_token(amm_coin_vault_data).unwrap();
+    let amm_target_state = raydium_amm::state::TargetOrders::load_from_bytes(
+        &amm_target_account.as_ref().unwrap().data,
+    )
+    .unwrap();
+    let amm_pc_vault = common::unpack_token(&amm_pc_vault_account.as_ref().unwrap().data).unwrap();
+    let amm_coin_vault =
+        common::unpack_token(&amm_coin_vault_account.as_ref().unwrap().data).unwrap();
 
     // assert for amm not share any liquidity to openbook
     assert_eq!(
@@ -188,7 +186,6 @@ pub fn calculate_swap_info(
     amm_program: Pubkey,
     pool_id: Pubkey,
     user_input_token: Pubkey,
-    user_output_token: Pubkey,
     amount_specified: u64,
     slippage_bps: u64,
     base_in: bool,
@@ -202,25 +199,20 @@ pub fn calculate_swap_info(
         amm_keys.amm_pc_vault,
         amm_keys.amm_coin_vault,
         user_input_token,
-        user_output_token,
     ];
     let rsps = common::rpc::get_multiple_accounts(&rpc_client, &load_pubkeys).unwrap();
-    let accounts = array_ref![rsps, 0, 5];
-    let [amm_account, amm_pc_vault_account, amm_coin_vault_account, user_input_token_account, user_output_token_account] =
+    let accounts = array_ref![rsps, 0, 4];
+    let [amm_account, amm_pc_vault_account, amm_coin_vault_account, user_input_token_account] =
         accounts;
 
-    let amm_account_data = &amm_account.clone().unwrap().data;
-    let amm_pc_vault_data = &amm_pc_vault_account.clone().unwrap().data;
-    let amm_coin_vault_data = &amm_coin_vault_account.clone().unwrap().data;
-    let user_input_token_data = &user_input_token_account.clone().unwrap().data;
-    let user_output_token_data = &user_output_token_account.clone().unwrap().data;
-
-    let amm_state = raydium_amm::state::AmmInfo::load_from_bytes(amm_account_data).unwrap();
+    let amm_state =
+        raydium_amm::state::AmmInfo::load_from_bytes(&amm_account.as_ref().unwrap().data).unwrap();
     let amm_state = amm_state.clone();
-    let amm_pc_vault = common::unpack_token(amm_pc_vault_data).unwrap();
-    let amm_coin_vault = common::unpack_token(amm_coin_vault_data).unwrap();
-    let user_input_token_info = common::unpack_token(user_input_token_data).unwrap();
-    let user_output_token_info = common::unpack_token(user_output_token_data).unwrap();
+    let amm_pc_vault = common::unpack_token(&amm_pc_vault_account.as_ref().unwrap().data).unwrap();
+    let amm_coin_vault =
+        common::unpack_token(&amm_coin_vault_account.as_ref().unwrap().data).unwrap();
+    let user_input_token_info =
+        common::unpack_token(&user_input_token_account.as_ref().unwrap().data).unwrap();
 
     // assert for amm not share any liquidity to openbook
     assert_eq!(
@@ -236,13 +228,22 @@ pub fn calculate_swap_info(
         )
         .unwrap();
 
-    let swap_direction = if user_input_token_info.base.mint == amm_keys.amm_coin_mint
-        && user_output_token_info.base.mint == amm_keys.amm_pc_mint
-    {
-        raydium_amm::math::SwapDirection::Coin2PC
-    } else {
-        raydium_amm::math::SwapDirection::PC2Coin
-    };
+    let (swap_direction, input_mint, output_mint) =
+        if user_input_token_info.base.mint == amm_keys.amm_coin_mint {
+            (
+                raydium_amm::math::SwapDirection::Coin2PC,
+                amm_keys.amm_coin_mint,
+                amm_keys.amm_pc_mint,
+            )
+        } else if user_input_token_info.base.mint == amm_keys.amm_pc_mint {
+            (
+                raydium_amm::math::SwapDirection::PC2Coin,
+                amm_keys.amm_pc_mint,
+                amm_keys.amm_coin_mint,
+            )
+        } else {
+            panic!("input tokens not match pool vaults");
+        };
     let other_amount_threshold = amm::amm_math::swap_with_slippage(
         amm_pool_pc_vault_amount,
         amm_pool_coin_vault_amount,
@@ -260,6 +261,8 @@ pub fn calculate_swap_info(
         amm_open_orders: amm_keys.amm_open_order,
         amm_coin_vault: amm_keys.amm_coin_vault,
         amm_pc_vault: amm_keys.amm_pc_vault,
+        input_mint,
+        output_mint,
         market_program: amm_keys.amm_authority, // padding readonly account
         market: amm_keys.amm_open_order,        // padding readwrite account
         market_coin_vault: amm_keys.amm_open_order, // padding readwrite account

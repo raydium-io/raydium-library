@@ -8,8 +8,7 @@ name = "raydium"
 path = "src/main.rs"
 
 [features]
-default = ["mainnet"]
-mainnet = ["raydium-library/mainnet"]
+# default is mainnet
 devnet = ["raydium-library/devnet"]
 
 [dependencies]

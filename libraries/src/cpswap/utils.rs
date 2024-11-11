@@ -65,14 +65,14 @@ pub fn add_liquidity_calculate(
     let [token_0_vault_account, token_1_vault_account, token_0_mint_account, token_1_mint_account] =
         array_ref![rsps, 0, 4];
     // docode account
-    let token_0_vault_data = token_0_vault_account.clone().unwrap().data;
-    let token_1_vault_data = token_1_vault_account.clone().unwrap().data;
-    let token_0_mint_data = token_0_mint_account.clone().unwrap().data;
-    let token_1_mint_data = token_1_mint_account.clone().unwrap().data;
-    let token_0_vault_info = common::unpack_token(&token_0_vault_data).unwrap();
-    let token_1_vault_info = common::unpack_token(&token_1_vault_data).unwrap();
-    let token_0_mint_info = common::unpack_token(&token_0_mint_data).unwrap();
-    let token_1_mint_info = common::unpack_token(&token_1_mint_data).unwrap();
+    let token_0_vault_info =
+        common::unpack_token(&token_0_vault_account.as_ref().unwrap().data).unwrap();
+    let token_1_vault_info =
+        common::unpack_token(&token_1_vault_account.as_ref().unwrap().data).unwrap();
+    let token_0_mint_info =
+        common::unpack_mint(&token_0_mint_account.as_ref().unwrap().data).unwrap();
+    let token_1_mint_info =
+        common::unpack_mint(&token_1_mint_account.as_ref().unwrap().data).unwrap();
     let epoch = rpc_client.get_epoch_info().unwrap().epoch;
 
     let (total_token_0_amount, total_token_1_amount) = pool_state.vault_amount_without_fee(
@@ -138,8 +138,8 @@ pub fn add_liquidity_calculate(
         mintlp: pool_state.lp_mint,
         vault0: pool_state.token_0_vault,
         vault1: pool_state.token_1_vault,
-        mint0_token_program: token_0_mint_info.base.owner,
-        mint1_token_program: token_1_mint_info.base.owner,
+        mint0_token_program: pool_state.token_0_program,
+        mint1_token_program: pool_state.token_1_program,
         lp_token_amount: liquidity_slippage,
         amount_0: amount_0_max,
         amount_1: amount_1_max,
@@ -167,14 +167,14 @@ pub fn remove_liquidity_calculate(
     let [token_0_vault_account, token_1_vault_account, token_0_mint_account, token_1_mint_account] =
         array_ref![rsps, 0, 4];
     // docode account
-    let token_0_vault_data = token_0_vault_account.clone().unwrap().data;
-    let token_1_vault_data = token_1_vault_account.clone().unwrap().data;
-    let token_0_mint_data = token_0_mint_account.clone().unwrap().data;
-    let token_1_mint_data = token_1_mint_account.clone().unwrap().data;
-    let token_0_vault_info = common::unpack_token(&token_0_vault_data).unwrap();
-    let token_1_vault_info = common::unpack_token(&token_1_vault_data).unwrap();
-    let token_0_mint_info = common::unpack_token(&token_0_mint_data).unwrap();
-    let token_1_mint_info = common::unpack_token(&token_1_mint_data).unwrap();
+    let token_0_vault_info =
+        common::unpack_token(&token_0_vault_account.as_ref().unwrap().data).unwrap();
+    let token_1_vault_info =
+        common::unpack_token(&token_1_vault_account.as_ref().unwrap().data).unwrap();
+    let token_0_mint_info =
+        common::unpack_mint(&token_0_mint_account.as_ref().unwrap().data).unwrap();
+    let token_1_mint_info =
+        common::unpack_mint(&token_1_mint_account.as_ref().unwrap().data).unwrap();
     let epoch = rpc_client.get_epoch_info().unwrap().epoch;
 
     let (total_token_0_amount, total_token_1_amount) = pool_state.vault_amount_without_fee(
@@ -187,7 +187,7 @@ pub fn remove_liquidity_calculate(
         u128::from(pool_state.lp_supply),
         u128::from(total_token_0_amount),
         u128::from(total_token_1_amount),
-        raydium_cp_swap::curve::RoundDirection::Ceiling,
+        raydium_cp_swap::curve::RoundDirection::Floor,
     )
     .ok_or(raydium_cp_swap::error::ErrorCode::ZeroTradingTokens)
     .unwrap();
@@ -197,9 +197,9 @@ pub fn remove_liquidity_calculate(
     );
     // calc with slippage
     let amount_0_with_slippage =
-        common::utils::amount_with_slippage(results.token_0_amount as u64, slippage_bps, true)?;
+        common::utils::amount_with_slippage(results.token_0_amount as u64, slippage_bps, false)?;
     let amount_1_with_slippage =
-        common::utils::amount_with_slippage(results.token_1_amount as u64, slippage_bps, true)?;
+        common::utils::amount_with_slippage(results.token_1_amount as u64, slippage_bps, false)?;
     // calc with transfer_fee
     let transfer_fee_0 =
         common::utils::get_transfer_inverse_fee(&token_0_mint_info, epoch, amount_0_with_slippage);
@@ -222,8 +222,8 @@ pub fn remove_liquidity_calculate(
         mintlp: pool_state.lp_mint,
         vault0: pool_state.token_0_vault,
         vault1: pool_state.token_1_vault,
-        mint0_token_program: token_0_mint_info.base.owner,
-        mint1_token_program: token_1_mint_info.base.owner,
+        mint0_token_program: pool_state.token_0_program,
+        mint1_token_program: pool_state.token_1_program,
         lp_token_amount: input_lp_amount,
         amount_0: amount_0_max,
         amount_1: amount_1_max,
@@ -234,7 +234,6 @@ pub fn swap_calculate(
     rpc_client: &RpcClient,
     pool_id: Pubkey,
     user_input_token: Pubkey,
-    user_output_token: Pubkey,
     amount_specified: u64,
     slippage_bps: u64,
     base_in: bool,
@@ -245,6 +244,7 @@ pub fn swap_calculate(
     )
     .unwrap()
     .unwrap();
+
     // load account
     let load_pubkeys = vec![
         pool_state.amm_config,
@@ -253,33 +253,27 @@ pub fn swap_calculate(
         pool_state.token_0_mint,
         pool_state.token_1_mint,
         user_input_token,
-        user_output_token,
     ];
     let rsps = rpc_client.get_multiple_accounts(&load_pubkeys).unwrap();
     let epoch = rpc_client.get_epoch_info().unwrap().epoch;
-    let [amm_config_account, token_0_vault_account, token_1_vault_account, token_0_mint_account, token_1_mint_account, user_input_token_account, user_output_token_account] =
-        array_ref![rsps, 0, 7];
+    let [amm_config_account, token_0_vault_account, token_1_vault_account, token_0_mint_account, token_1_mint_account, user_input_token_account] =
+        array_ref![rsps, 0, 6];
     // docode account
-    let token_0_vault_data = token_0_vault_account.clone().unwrap().data;
-    let token_1_vault_data = token_1_vault_account.clone().unwrap().data;
-    let token_0_mint_data = token_0_mint_account.clone().unwrap().data;
-    let token_1_mint_data = token_1_mint_account.clone().unwrap().data;
-    let user_input_token_data = user_input_token_account.clone().unwrap().data;
-    let user_output_token_data = user_output_token_account.clone().unwrap().data;
     let amm_config_state = common::utils::deserialize_anchor_account::<
         raydium_cp_swap::states::AmmConfig,
     >(amm_config_account.as_ref().unwrap())
     .unwrap();
 
-    let token_0_vault_info = common::unpack_token(&token_0_vault_data).unwrap();
-    let token_1_vault_info: spl_token_2022::extension::StateWithExtensions<
-        '_,
-        spl_token_2022::state::Account,
-    > = common::unpack_token(&token_1_vault_data).unwrap();
-    let token_0_mint_info = common::unpack_mint(&token_0_mint_data).unwrap();
-    let token_1_mint_info = common::unpack_mint(&token_1_mint_data).unwrap();
-    let user_input_token_info = common::unpack_token(&user_input_token_data).unwrap();
-    let user_output_token_info = common::unpack_token(&user_output_token_data).unwrap();
+    let token_0_vault_info =
+        common::unpack_token(&token_0_vault_account.as_ref().unwrap().data).unwrap();
+    let token_1_vault_info =
+        common::unpack_token(&token_1_vault_account.as_ref().unwrap().data).unwrap();
+    let token_0_mint_info =
+        common::unpack_mint(&token_0_mint_account.as_ref().unwrap().data).unwrap();
+    let token_1_mint_info =
+        common::unpack_mint(&token_1_mint_account.as_ref().unwrap().data).unwrap();
+    let user_input_token_info =
+        common::unpack_token(&user_input_token_account.as_ref().unwrap().data).unwrap();
 
     let (total_token_0_amount, total_token_1_amount) = pool_state.vault_amount_without_fee(
         token_0_vault_info.base.amount,
@@ -297,9 +291,7 @@ pub fn swap_calculate(
         input_token_program,
         output_token_program,
         transfer_fee,
-    ) = if user_input_token_info.base.mint == token_0_vault_info.base.mint
-        && user_output_token_info.base.mint == token_1_vault_info.base.mint
-    {
+    ) = if user_input_token_info.base.mint == token_0_vault_info.base.mint {
         (
             raydium_cp_swap::curve::TradeDirection::ZeroForOne,
             total_token_0_amount,
@@ -316,9 +308,7 @@ pub fn swap_calculate(
                 common::utils::get_transfer_inverse_fee(&token_1_mint_info, epoch, amount_specified)
             },
         )
-    } else if user_input_token_info.base.mint == token_1_vault_info.base.mint
-        && user_output_token_info.base.mint == token_0_vault_info.base.mint
-    {
+    } else if user_input_token_info.base.mint == token_1_vault_info.base.mint {
         (
             raydium_cp_swap::curve::TradeDirection::OneForZero,
             total_token_1_amount,
@@ -404,7 +394,6 @@ pub fn swap_calculate(
         pool_config: pool_state.amm_config,
         pool_observation: pool_state.observation_key,
         user_input_token,
-        user_output_token,
         input_vault,
         output_vault,
         input_mint,

@@ -1,7 +1,14 @@
 use solana_sdk::pubkey::Pubkey;
 use std::collections::VecDeque;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct RewardItem {
+    pub token_program: Pubkey,
+    pub reward_mint: Pubkey,
+    pub reward_vault: Pubkey,
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct ClmmCreatePoolResult {
     pub mint0: Pubkey,
     pub mint1: Pubkey,
@@ -12,7 +19,7 @@ pub struct ClmmCreatePoolResult {
     pub tick: i32,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ClmmLiquidityChangeResult {
     pub mint0: Pubkey,
     pub mint1: Pubkey,
@@ -20,6 +27,7 @@ pub struct ClmmLiquidityChangeResult {
     pub vault1: Pubkey,
     pub mint0_token_program: Pubkey,
     pub mint1_token_program: Pubkey,
+    pub reward_items: Vec<RewardItem>,
     pub liquidity: u128,
     pub amount_0: u64,
     pub amount_1: u64,
@@ -38,8 +46,9 @@ pub struct ClmmSwapChangeResult {
     pub output_vault: Pubkey,
     pub input_vault_mint: Pubkey,
     pub output_vault_mint: Pubkey,
+    pub input_token_program: Pubkey,
+    pub output_token_program: Pubkey,
     pub user_input_token: Pubkey,
-    pub user_out_put_token: Pubkey,
     pub remaining_tick_array_keys: VecDeque<Pubkey>,
     pub amount: u64,
     pub other_amount_threshold: u64,

@@ -3,7 +3,7 @@ use crate::{
     clmm::{
         clmm_math,
         types::{
-            ClmmCreatePoolResult, ClmmLiquidityChangeResult, ClmmSwapChangeResult,
+            ClmmCreatePoolResult, ClmmLiquidityChangeResult, ClmmSwapChangeResult, RewardItem,
             StepComputations, SwapState,
         },
     },
@@ -35,8 +35,8 @@ pub fn create_pool_price(
     println!("mint0:{}, mint1:{}, price:{}", mint0, mint1, price);
     let load_pubkeys = vec![mint0, mint1];
     let rsps = rpc_client.get_multiple_accounts(&load_pubkeys).unwrap();
-    let mint0_token_program = rsps[0].clone().unwrap().owner;
-    let mint1_token_program = rsps[1].clone().unwrap().owner;
+    let mint0_token_program = rsps[0].as_ref().unwrap().owner;
+    let mint1_token_program = rsps[1].as_ref().unwrap().owner;
     let mint0_info = utils::unpack_mint(&rsps[0].as_ref().unwrap().data).unwrap();
     let mint1_info = utils::unpack_mint(&rsps[1].as_ref().unwrap().data).unwrap();
     let sqrt_price_x64 = clmm_math::price_to_sqrt_price_x64(
@@ -63,15 +63,34 @@ pub fn calculate_liquidity_change(
     tick_upper_price: f64,
     input_amount: u64,
     slippage_bps: u64,
+    collect_reward: bool,
     is_base_0: bool,
 ) -> Result<ClmmLiquidityChangeResult> {
     let pool = rpc::get_anchor_account::<raydium_amm_v3::states::PoolState>(rpc_client, &pool_id)
         .unwrap()
         .unwrap();
-    let load_pubkeys = vec![pool.token_mint_0, pool.token_mint_1];
-    let rsps = rpc_client.get_multiple_accounts(&load_pubkeys).unwrap();
-    let mint0_token_program = rsps[0].clone().unwrap().owner;
-    let mint1_token_program = rsps[1].clone().unwrap().owner;
+    let mut load_pubkeys = vec![pool.token_mint_0, pool.token_mint_1];
+
+    let mut reward_items: Vec<RewardItem> = Vec::new();
+    if collect_reward {
+        // collect reward info while decrease liquidity
+        for item in pool.reward_infos.iter() {
+            if item.token_mint != Pubkey::default() {
+                reward_items.push(RewardItem {
+                    token_program: Pubkey::default(),
+                    reward_mint: item.token_mint,
+                    reward_vault: item.token_vault,
+                });
+                load_pubkeys.push(item.token_mint);
+            }
+        }
+    }
+    let mut rsps = rpc_client.get_multiple_accounts(&load_pubkeys).unwrap();
+    let mint0_token_program = rsps.remove(0).unwrap().owner;
+    let mint1_token_program = rsps.remove(0).unwrap().owner;
+    for (item, rsp) in reward_items.iter_mut().zip(rsps.iter()) {
+        item.token_program = rsp.as_ref().unwrap().owner;
+    }
 
     let tick_lower_price_x64 = clmm_math::price_to_sqrt_price_x64(
         tick_lower_price,
@@ -162,6 +181,7 @@ pub fn calculate_liquidity_change(
         vault1: pool.token_vault_1,
         mint0_token_program,
         mint1_token_program,
+        reward_items,
         liquidity,
         amount_0: amount_0_max,
         amount_1: amount_1_max,
@@ -178,7 +198,6 @@ pub fn calculate_swap_change(
     pool_id: Pubkey,
     tickarray_bitmap_extension: Pubkey,
     input_token: Pubkey,
-    output_token: Pubkey,
     amount: u64,
     limit_price: Option<f64>,
     base_in: bool,
@@ -191,7 +210,6 @@ pub fn calculate_swap_change(
     // load mult account
     let load_accounts = vec![
         input_token,
-        output_token,
         pool_state.amm_config,
         pool_state.token_mint_0,
         pool_state.token_mint_1,
@@ -199,17 +217,13 @@ pub fn calculate_swap_change(
     ];
     let rsps = rpc_client.get_multiple_accounts(&load_accounts).unwrap();
     let epoch = rpc_client.get_epoch_info().unwrap().epoch;
-    let [user_input_account, user_output_account, amm_config_account, mint0_account, mint1_account, tickarray_bitmap_extension_account] =
-        array_ref![rsps, 0, 6];
-
-    let user_input_token_data = user_input_account.clone().unwrap().data;
-    let user_input_state = utils::unpack_token(&user_input_token_data).unwrap();
-    let user_output_token_data = user_output_account.clone().unwrap().data;
-    let user_output_state = utils::unpack_token(&user_output_token_data).unwrap();
-    let mint0_data = mint0_account.clone().unwrap().data;
-    let mint0_state = utils::unpack_mint(&mint0_data).unwrap();
-    let mint1_data = mint1_account.clone().unwrap().data;
-    let mint1_state = utils::unpack_mint(&mint1_data).unwrap();
+    let [user_input_account, amm_config_account, mint0_account, mint1_account, tickarray_bitmap_extension_account] =
+        array_ref![rsps, 0, 5];
+    let mint0_token_program = mint0_account.as_ref().unwrap().owner;
+    let mint1_token_program = mint1_account.as_ref().unwrap().owner;
+    let user_input_state = utils::unpack_token(&user_input_account.as_ref().unwrap().data).unwrap();
+    let mint0_state = utils::unpack_mint(&mint0_account.as_ref().unwrap().data).unwrap();
+    let mint1_state = utils::unpack_mint(&mint1_account.as_ref().unwrap().data).unwrap();
     let tickarray_bitmap_extension_state =
         deserialize_anchor_account::<raydium_amm_v3::states::TickArrayBitmapExtension>(
             tickarray_bitmap_extension_account.as_ref().unwrap(),
@@ -220,8 +234,37 @@ pub fn calculate_swap_change(
     )
     .unwrap();
 
-    let zero_for_one = user_input_state.base.mint == pool_state.token_mint_0
-        && user_output_state.base.mint == pool_state.token_mint_1;
+    let (
+        zero_for_one,
+        input_vault,
+        output_vault,
+        input_vault_mint,
+        output_vault_mint,
+        input_token_program,
+        output_token_program,
+    ) = if user_input_state.base.mint == pool_state.token_mint_0 {
+        (
+            true,
+            pool_state.token_vault_0,
+            pool_state.token_vault_1,
+            pool_state.token_mint_0,
+            pool_state.token_mint_1,
+            mint0_token_program,
+            mint1_token_program,
+        )
+    } else if user_input_state.base.mint == pool_state.token_mint_1 {
+        (
+            false,
+            pool_state.token_vault_1,
+            pool_state.token_vault_0,
+            pool_state.token_mint_1,
+            pool_state.token_mint_0,
+            mint1_token_program,
+            mint0_token_program,
+        )
+    } else {
+        panic!("input tokens not match pool vaults");
+    };
     let transfer_fee = if base_in {
         if zero_for_one {
             utils::get_transfer_fee(&mint0_state, epoch, amount)
@@ -302,28 +345,13 @@ pub fn calculate_swap_change(
         pool_amm_config: pool_state.amm_config,
         pool_id,
         pool_observation: pool_state.observation_key,
-        input_vault: if zero_for_one {
-            pool_state.token_vault_0
-        } else {
-            pool_state.token_vault_1
-        },
-        output_vault: if zero_for_one {
-            pool_state.token_vault_1
-        } else {
-            pool_state.token_vault_0
-        },
-        input_vault_mint: if zero_for_one {
-            pool_state.token_mint_0
-        } else {
-            pool_state.token_mint_1
-        },
-        output_vault_mint: if zero_for_one {
-            pool_state.token_mint_1
-        } else {
-            pool_state.token_mint_0
-        },
+        input_vault,
+        output_vault,
+        input_vault_mint,
+        output_vault_mint,
+        input_token_program,
+        output_token_program,
         user_input_token: input_token,
-        user_out_put_token: output_token,
         remaining_tick_array_keys,
         amount,
         other_amount_threshold,

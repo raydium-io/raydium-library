@@ -3,7 +3,7 @@
 use anyhow::{Ok, Result};
 use clap::Parser;
 use solana_client::rpc_client::RpcClient;
-use solana_sdk::signer::Signer;
+use solana_sdk::{commitment_config::CommitmentConfig, signer::Signer};
 use std::sync::Arc;
 
 use raydium_library::{
@@ -50,6 +50,7 @@ pub fn entry(opts: Opts) -> Result<()> {
     // println!("{:#?}", config);
 
     let payer = common::utils::read_keypair_file(&config.wallet())?;
+    let fee_payer = payer.pubkey();
     let mut signing_keypairs: Vec<Arc<dyn Signer>> = Vec::new();
     let payer: Arc<dyn Signer> = Arc::new(payer);
     if !signing_keypairs.contains(&payer) {
@@ -69,10 +70,22 @@ pub fn entry(opts: Opts) -> Result<()> {
         Some(instructions) => {
             // build txn
             let rpc_client = RpcClient::new(config.cluster().url());
-            let txn = common::build_txn(&rpc_client, &instructions, &signing_keypairs).unwrap();
-            // send txn
-            let sig = common::send_txn(&rpc_client, &txn, false);
-            println!("{:#?}", sig);
+            let txn = common::build_txn(&rpc_client, &instructions, &fee_payer, &signing_keypairs)
+                .unwrap();
+            // println!("{:#?}", txn);
+            if config.simulate() {
+                let sig = common::simulate_transaction(
+                    &rpc_client,
+                    &txn,
+                    false,
+                    CommitmentConfig::confirmed(),
+                );
+                println!("{:#?}", sig);
+            } else {
+                //  send txn
+                let sig = common::send_txn(&rpc_client, &txn, true);
+                println!("{:#?}", sig);
+            }
         }
         None => {
             // do nothing

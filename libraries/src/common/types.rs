@@ -68,10 +68,12 @@ pub struct CommonConfig {
     openbook_program: Option<Pubkey>,
     #[clap(global = true, long = "config.slippage")]
     slippage_bps: Option<u64>,
+    #[clap(global = true, short, long, action)]
+    simulate: bool,
 }
 
 impl Default for CommonConfig {
-    #[cfg(feature = "mainnet")]
+    #[cfg(not(feature = "devnet"))]
     fn default() -> Self {
         CommonConfig {
             http_url: Some("https://api.mainnet-beta.solana.com".to_string()),
@@ -92,6 +94,7 @@ impl Default for CommonConfig {
                 Pubkey::from_str("srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX").unwrap(),
             ),
             slippage_bps: Some(100),
+            simulate: false,
         }
     }
     #[cfg(feature = "devnet")]
@@ -115,6 +118,7 @@ impl Default for CommonConfig {
                 Pubkey::from_str("EoTcMgcDRTJVZDMZWBoU6rhYHZfkNTVEAfz3uUJRcYGj").unwrap(),
             ),
             slippage_bps: Some(100),
+            simulate: false,
         }
     }
 }
@@ -215,6 +219,7 @@ impl CommonConfig {
         if command.slippage_bps.is_some() {
             self.slippage_bps = command.slippage_bps;
         }
+        self.simulate = command.simulate;
     }
 
     pub fn cluster(&self) -> Cluster {
@@ -261,5 +266,9 @@ impl CommonConfig {
 
     pub fn slippage(&self) -> u64 {
         self.slippage_bps.unwrap_or(0)
+    }
+
+    pub fn simulate(&self) -> bool {
+        self.simulate
     }
 }

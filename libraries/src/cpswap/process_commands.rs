@@ -95,8 +95,9 @@ pub enum CpSwapCommands {
         #[clap(long)]
         user_input_token: Pubkey,
         /// The token of user want to swap to.
+        /// If none is given, the account will be ATA account.
         #[clap(long)]
-        user_output_token: Pubkey,
+        user_output_token: Option<Pubkey>,
         /// The amount specified of user want to swap from or to token
         #[clap(short, long)]
         amount_specified: u64,
@@ -148,18 +149,20 @@ pub fn process_cpswap_commands(
         } => {
             let load_pubkeys = vec![user_token0, user_token1];
             let rsps = rpc_client.get_multiple_accounts(&load_pubkeys)?;
-            let user_token0_data = rsps[0].clone().unwrap().data;
-            let user_token1_data = rsps[1].clone().unwrap().data;
-            let user_token0_account = common::unpack_token(&user_token0_data).unwrap();
-            let user_token1_account = common::unpack_token(&user_token1_data).unwrap();
+            let token0_program = rsps[0].as_ref().unwrap().owner;
+            let token1_program = rsps[1].as_ref().unwrap().owner;
+            let user_token0_account =
+                common::unpack_token(&rsps[0].as_ref().unwrap().data).unwrap();
+            let user_token1_account =
+                common::unpack_token(&rsps[1].as_ref().unwrap().data).unwrap();
 
             let (
                 user_token0,
                 user_token1,
                 mint0,
                 mint1,
-                token_0_program,
-                token_1_program,
+                token0_program,
+                token1_program,
                 init_amount_0,
                 init_amount_1,
             ) = if user_token0_account.base.mint > user_token1_account.base.mint {
@@ -169,8 +172,8 @@ pub fn process_cpswap_commands(
                     user_token0,
                     user_token1_account.base.mint,
                     user_token0_account.base.mint,
-                    user_token1_account.base.owner,
-                    user_token0_account.base.owner,
+                    token1_program,
+                    token0_program,
                     init_amount_1,
                     init_amount_0,
                 )
@@ -180,17 +183,19 @@ pub fn process_cpswap_commands(
                     user_token1,
                     user_token0_account.base.mint,
                     user_token1_account.base.mint,
-                    user_token0_account.base.owner,
-                    user_token1_account.base.owner,
+                    token0_program,
+                    token1_program,
                     init_amount_0,
                     init_amount_1,
                 )
             };
+
             let random_pool_id = if random_pool {
                 let random_pool_keypair = Keypair::generate(&mut OsRng);
                 let random_pool_id = random_pool_keypair.pubkey();
                 let signer: Arc<dyn Signer> = Arc::new(random_pool_keypair);
                 if !signing_keypairs.contains(&signer) {
+                    println!("random_pool_id:{}", random_pool_id);
                     signing_keypairs.push(signer);
                 }
                 Some(random_pool_id)
@@ -202,8 +207,8 @@ pub fn process_cpswap_commands(
                 &config,
                 mint0,
                 mint1,
-                token_0_program,
-                token_1_program,
+                token0_program,
+                token1_program,
                 user_token0,
                 user_token1,
                 raydium_cp_swap::create_pool_fee_reveiver::id(),
@@ -376,19 +381,38 @@ pub fn process_cpswap_commands(
                 &rpc_client,
                 pool_id,
                 user_input_token,
-                user_output_token,
                 amount_specified,
                 config.slippage(),
                 base_in,
             )?;
-            let instructions = if base_in {
+
+            let mut instructions = Vec::new();
+            let user_output_token = if let Some(user_output_token) = user_output_token {
+                user_output_token
+            } else {
+                let create_user_output_token_instr = common::token::create_ata_token_or_not(
+                    &payer_pubkey,
+                    &result.output_mint,
+                    &payer_pubkey,
+                    Some(&result.output_token_program),
+                );
+                instructions.extend(create_user_output_token_instr);
+
+                spl_associated_token_account::get_associated_token_address_with_program_id(
+                    &payer_pubkey,
+                    &result.output_mint,
+                    &result.output_token_program,
+                )
+            };
+
+            let swap_instruction = if base_in {
                 cpswap::swap_base_input_instr(
                     &config,
                     pool_id,
                     result.pool_config,
                     result.pool_observation,
                     result.user_input_token,
-                    result.user_output_token,
+                    user_output_token,
                     result.input_vault,
                     result.output_vault,
                     result.input_mint,
@@ -405,7 +429,7 @@ pub fn process_cpswap_commands(
                     result.pool_config,
                     result.pool_observation,
                     result.user_input_token,
-                    result.user_output_token,
+                    user_output_token,
                     result.input_vault,
                     result.output_vault,
                     result.input_mint,
@@ -416,6 +440,7 @@ pub fn process_cpswap_commands(
                     result.other_amount_threshold,
                 )?
             };
+            instructions.extend(swap_instruction);
             return Ok(Some(instructions));
         }
         CpSwapCommands::FetchPool {

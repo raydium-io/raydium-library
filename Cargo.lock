@@ -664,6 +664,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9d297deb1925b89f2ccc13d7635fa0714f12c87adce1c75356b39ca9b7178567"
 
 [[package]]
+name = "base64"
+version = "0.22.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
+
+[[package]]
 name = "base64ct"
 version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3003,9 +3009,9 @@ dependencies = [
  "anchor-lang",
  "anyhow",
  "arrayref",
- "base64 0.13.1",
+ "base64 0.22.1",
  "bincode",
- "bs58 0.4.0",
+ "bs58 0.5.1",
  "bytemuck",
  "clap 4.5.20",
  "mpl-token-metadata 1.13.2",
@@ -3027,7 +3033,7 @@ dependencies = [
  "spl-token 4.0.0",
  "spl-token-2022 0.9.0",
  "toml 0.8.19",
- "uint 0.9.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "uint 0.10.0",
 ]
 
 [[package]]
@@ -5217,6 +5223,18 @@ dependencies = [
 name = "uint"
 version = "0.9.5"
 source = "git+https://github.com/raydium-io/parity-common#43a0303b9c2a23a00508816bd6d5a2e9381f143c"
+dependencies = [
+ "byteorder",
+ "crunchy",
+ "hex",
+ "static_assertions",
+]
+
+[[package]]
+name = "uint"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "909988d098b2f738727b161a106cfc7cab00c539c2687a8836f8e565976fb53e"
 dependencies = [
  "byteorder",
  "crunchy",

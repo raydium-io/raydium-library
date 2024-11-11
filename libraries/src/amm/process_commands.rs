@@ -101,8 +101,9 @@ pub enum AmmCommands {
         #[clap(long)]
         user_input_token: Pubkey,
         /// The token of user want to swap to.
+        /// If none is given, the account will be ATA account.
         #[clap(long)]
-        user_output_token: Pubkey,
+        user_output_token: Option<Pubkey>,
         /// The amount specified of user want to swap from or to token
         #[clap(short, long)]
         amount_specified: u64,
@@ -360,12 +361,30 @@ pub fn process_amm_commands(
                 config.amm_program(),
                 pool_id,
                 user_input_token,
-                user_output_token,
                 amount_specified,
                 config.slippage(),
                 base_in,
             )?;
-            let instruction = if base_in {
+            let mut instructions = Vec::new();
+            let user_output_token = if let Some(user_output_token) = user_output_token {
+                user_output_token
+            } else {
+                // create output token or not
+                let create_user_output_token_instr = common::token::create_ata_token_or_not(
+                    &payer_pubkey,
+                    &result.output_mint,
+                    &payer_pubkey,
+                    None,
+                );
+                instructions.extend(create_user_output_token_instr);
+
+                spl_associated_token_account::get_associated_token_address(
+                    &payer_pubkey,
+                    &result.output_mint,
+                )
+            };
+
+            let swap_instruction = if base_in {
                 raydium_amm::instruction::swap_base_in(
                     &config.amm_program(),
                     &result.pool_id,
@@ -410,7 +429,8 @@ pub fn process_amm_commands(
                     result.amount_specified,
                 )?
             };
-            return Ok(Some(vec![instruction]));
+            instructions.extend(vec![swap_instruction]);
+            return Ok(Some(instructions));
         }
         AmmCommands::FetchPool {
             pool_id,

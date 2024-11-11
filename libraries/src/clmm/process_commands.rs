@@ -122,8 +122,9 @@ pub enum ClmmCommands {
         #[clap(long)]
         user_input_token: Pubkey,
         /// The token of user want to swap to.
+        /// If none is given, the account will be ATA account.
         #[clap(long)]
-        user_output_token: Pubkey,
+        user_output_token: Option<Pubkey>,
         /// The amount specified of user want to swap from or to token.
         #[clap(short, long)]
         amount_specified: u64,
@@ -205,6 +206,7 @@ pub fn process_clmm_commands(
                 tick_upper_price,
                 amount_specified,
                 config.slippage(),
+                false,
                 base_token0,
             )?;
             let deposit_token0 = if let Some(deposit_token0) = deposit_token0 {
@@ -319,6 +321,7 @@ pub fn process_clmm_commands(
                 tick_upper_price,
                 amount_specified,
                 config.slippage(),
+                false,
                 base_token0,
             )?;
             let deposit_token0 = if let Some(deposit_token0) = deposit_token0 {
@@ -422,6 +425,7 @@ pub fn process_clmm_commands(
                 tick_upper_price,
                 amount_specified,
                 config.slippage(),
+                true,
                 base_token0,
             )?;
             // load position
@@ -491,6 +495,30 @@ pub fn process_clmm_commands(
                     )
                 };
 
+                let mut reward_vault_with_user_token: Vec<Pubkey> = Vec::new();
+                for item in result.reward_items.iter() {
+                    // pool reward vault
+                    reward_vault_with_user_token.push(item.reward_vault);
+                    // user reward token
+                    reward_vault_with_user_token.push(
+                        spl_associated_token_account::get_associated_token_address_with_program_id(
+                            &payer_pubkey,
+                            &item.reward_mint,
+                            &item.token_program,
+                        ),
+                    );
+                    // reward vault mint
+                    reward_vault_with_user_token.push(item.reward_mint);
+                    // reward mint maybe token22
+                    let create_user_reward_token_instr = common::token::create_ata_token_or_not(
+                        &payer_pubkey,
+                        &item.reward_mint,
+                        &payer_pubkey,
+                        Some(&item.token_program),
+                    );
+                    instructions.extend(create_user_reward_token_instr);
+                }
+
                 // personal position exist
                 let tickarray_bitmap_extension = Pubkey::find_program_address(
                     &[
@@ -503,6 +531,11 @@ pub fn process_clmm_commands(
                 let mut remaining_accounts = Vec::new();
                 remaining_accounts.push(AccountMeta::new(tickarray_bitmap_extension, false));
                 // reward info
+                let mut accounts = reward_vault_with_user_token
+                    .into_iter()
+                    .map(|item| AccountMeta::new(item, false))
+                    .collect();
+                remaining_accounts.append(&mut accounts);
 
                 let decrease_instr = clmm::decrease_liquidity_instr(
                     &config.clone(),
@@ -553,12 +586,30 @@ pub fn process_clmm_commands(
                 pool_id,
                 tickarray_bitmap_extension,
                 user_input_token,
-                user_output_token,
                 amount_specified,
                 limit_price,
                 base_in,
                 config.slippage(),
             )?;
+
+            let mut instructions = Vec::new();
+            let user_output_token = if let Some(user_output_token) = user_output_token {
+                user_output_token
+            } else {
+                let create_user_output_token_instr = common::token::create_ata_token_or_not(
+                    &payer_pubkey,
+                    &result.output_vault_mint,
+                    &payer_pubkey,
+                    Some(&result.output_token_program),
+                );
+                instructions.extend(create_user_output_token_instr);
+
+                spl_associated_token_account::get_associated_token_address_with_program_id(
+                    &payer_pubkey,
+                    &result.output_vault_mint,
+                    &result.output_token_program,
+                )
+            };
 
             let mut remaining_accounts = Vec::new();
             remaining_accounts.push(AccountMeta::new_readonly(tickarray_bitmap_extension, false));
@@ -576,7 +627,7 @@ pub fn process_clmm_commands(
                 result.output_vault,
                 result.pool_observation,
                 result.user_input_token,
-                result.user_out_put_token,
+                user_output_token,
                 result.input_vault_mint,
                 result.output_vault_mint,
                 remaining_accounts,
@@ -585,7 +636,8 @@ pub fn process_clmm_commands(
                 result.sqrt_price_limit_x64,
                 result.is_base_input,
             )?;
-            return Ok(Some(swap_instr));
+            instructions.extend(swap_instr);
+            return Ok(Some(instructions));
         }
         ClmmCommands::FetchPool {
             pool_id,

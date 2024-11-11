@@ -1,6 +1,6 @@
 use solana_sdk::pubkey::Pubkey;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct CpSwapLiquidityChangeResult {
     pub pool_id: Pubkey,
     pub mint0: Pubkey,
@@ -15,13 +15,12 @@ pub struct CpSwapLiquidityChangeResult {
     pub amount_1: u64,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct CpSwapSwapChangeResult {
     pub pool_id: Pubkey,
     pub pool_config: Pubkey,
     pub pool_observation: Pubkey,
     pub user_input_token: Pubkey,
-    pub user_output_token: Pubkey,
     pub input_vault: Pubkey,
     pub output_vault: Pubkey,
     pub input_mint: Pubkey,

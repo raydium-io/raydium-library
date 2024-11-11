@@ -120,7 +120,7 @@ pub fn initialize_pool_instr(
         &program.id(),
     );
 
-    let instructions = program
+    let mut instructions = program
         .request()
         .accounts(raydium_cp_accounts::Initialize {
             creator: program.payer(),
@@ -153,6 +153,15 @@ pub fn initialize_pool_instr(
             open_time,
         })
         .instructions()?;
+    if random_pool_id.is_some() {
+        // update account signer as true for random pool
+        for account in instructions[0].accounts.iter_mut() {
+            if account.pubkey == random_pool_id.unwrap() {
+                account.is_signer = true;
+                break;
+            }
+        }
+    }
     Ok(instructions)
 }
 

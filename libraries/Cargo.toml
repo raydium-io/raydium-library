@@ -4,8 +4,6 @@ version = "0.1.0"
 edition = "2018"
 
 [features]
-default = ["mainnet"]
-mainnet = []
 devnet = [
     "raydium-amm-v3/devnet",
     "raydium-cp-swap/devnet",
@@ -49,11 +47,11 @@ bytemuck = { version = "1.7.3" }
 safe-transmute = "0.11.2"
 serde_json = { version = "1.0.78" }
 serde = { version = "1.0", features = ["derive"] }
-base64 = "0.13.0"
-bs58 = { version = "0.4.0" }
+base64 = "0.22.1"
+bs58 = { version = "0.5.1" }
 bincode = { version = "1.3.3" }
 arrayref = "0.3.6"
-uint = "0.9.5"
+uint = "0.10.0"
 clap = { version = "4.1.8", features = ["derive"] }
 toml = "0.8.19"
 

@@ -25,7 +25,7 @@ pub struct CalculateResult {
     pub swap_fee_denominator: u64,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AmmDepositInfoResult {
     pub pool_id: Pubkey,
     pub amm_authority: Pubkey,
@@ -44,7 +44,7 @@ pub struct AmmDepositInfoResult {
     pub base_side: u64,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AmmWithdrawInfoResult {
     pub pool_id: Pubkey,
     pub amm_authority: Pubkey,
@@ -67,13 +67,15 @@ pub struct AmmWithdrawInfoResult {
     pub receive_min_pc_amount: Option<u64>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AmmSwapInfoResult {
     pub pool_id: Pubkey,
     pub amm_authority: Pubkey,
     pub amm_open_orders: Pubkey,
     pub amm_coin_vault: Pubkey,
     pub amm_pc_vault: Pubkey,
+    pub input_mint: Pubkey,
+    pub output_mint: Pubkey,
     pub market_program: Pubkey,
     pub market: Pubkey,
     pub market_coin_vault: Pubkey,

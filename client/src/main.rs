@@ -40,14 +40,11 @@ pub struct Opts {
 pub fn entry(opts: Opts) -> Result<()> {
     // default config
     let mut config = common::CommonConfig::default();
-    // println!("{:#?}", config);
     // config file override
     config.file_override().unwrap();
-    // println!("{:#?}", config);
     // config command override
     let command_override = opts.command_override;
     config.command_override(command_override);
-    // println!("{:#?}", config);
 
     let payer = common::utils::read_keypair_file(&config.wallet())?;
     let fee_payer = payer.pubkey();
@@ -72,7 +69,6 @@ pub fn entry(opts: Opts) -> Result<()> {
             let rpc_client = RpcClient::new(config.cluster().url());
             let txn = common::build_txn(&rpc_client, &instructions, &fee_payer, &signing_keypairs)
                 .unwrap();
-            // println!("{:#?}", txn);
             if config.simulate() {
                 let sig = common::simulate_transaction(
                     &rpc_client,

@@ -1,4 +1,6 @@
-use solana_sdk::{instruction::Instruction, program_pack::Pack, pubkey::Pubkey};
+use solana_sdk::{
+    instruction::Instruction, program_pack::Pack, pubkey::Pubkey, system_instruction,
+};
 
 pub fn create_ata_token_or_not(
     funding: &Pubkey,
@@ -111,4 +113,11 @@ pub fn close_spl_account(
         &[],
     )
     .unwrap()]
+}
+
+pub fn wrap_sol_instructions(from: &Pubkey, to: &Pubkey, amount: u64) -> Vec<Instruction> {
+    vec![
+        system_instruction::transfer(from, to, amount),
+        spl_token::instruction::sync_native(&spl_token::id(), to).unwrap(),
+    ]
 }

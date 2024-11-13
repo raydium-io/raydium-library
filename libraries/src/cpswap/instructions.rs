@@ -1,13 +1,13 @@
 use crate::common;
-use raydium_cp_swap::accounts as raydium_cp_accounts;
-use raydium_cp_swap::instruction as raydium_cp_instruction;
 use raydium_cp_swap::{
+    accounts as raydium_cp_accounts, instruction as raydium_cp_instruction,
     states::{AMM_CONFIG_SEED, OBSERVATION_SEED, POOL_LP_MINT_SEED, POOL_SEED, POOL_VAULT_SEED},
     AUTH_SEED,
 };
 use solana_sdk::{instruction::Instruction, pubkey::Pubkey, system_program, sysvar};
 
 use anchor_client::Client;
+use anchor_spl::memo::ID as MEMO_ID;
 
 use common::types::CommonConfig;
 
@@ -255,7 +255,7 @@ pub fn withdraw_instr(
             vault_0_mint: token_0_mint,
             vault_1_mint: token_1_mint,
             lp_mint: token_lp_mint,
-            memo_program: spl_memo::id(),
+            memo_program: MEMO_ID,
         })
         .args(raydium_cp_instruction::Withdraw {
             lp_token_amount,

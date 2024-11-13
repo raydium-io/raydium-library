@@ -1,20 +1,19 @@
 use crate::common;
-use mpl_token_metadata::state::PREFIX as MPL_PREFIX;
-use raydium_amm_v3::accounts as raydium_clmm_accounts;
-use raydium_amm_v3::instruction as raydium_clmm_instruction;
-use raydium_amm_v3::states::{
-    OBSERVATION_SEED, POOL_SEED, POOL_TICK_ARRAY_BITMAP_SEED, POOL_VAULT_SEED, POSITION_SEED,
-    TICK_ARRAY_SEED,
-};
-use solana_sdk::{instruction::Instruction, pubkey::Pubkey, system_program, sysvar};
-
 use anchor_client::Client;
 use anchor_lang::prelude::AccountMeta;
-
-use common::types::CommonConfig;
-
+use anchor_spl::{memo::ID as MEMO_ID, metadata::mpl_token_metadata::ID as MPL_ID};
 use anyhow::{format_err, Result};
+use common::types::CommonConfig;
+use raydium_amm_v3::{
+    accounts as raydium_clmm_accounts, instruction as raydium_clmm_instruction,
+    states::{
+        OBSERVATION_SEED, POOL_SEED, POOL_TICK_ARRAY_BITMAP_SEED, POOL_VAULT_SEED, POSITION_SEED,
+        TICK_ARRAY_SEED,
+    },
+};
+use solana_sdk::{instruction::Instruction, pubkey::Pubkey, system_program, sysvar};
 use std::rc::Rc;
+const MPL_PREFIX: &str = "metadata";
 
 pub fn create_pool_instr(
     config: &CommonConfig,
@@ -130,10 +129,10 @@ pub fn open_position_instr(
     let (metadata_account_key, _bump) = Pubkey::find_program_address(
         &[
             MPL_PREFIX.as_bytes(),
-            mpl_token_metadata::id().to_bytes().as_ref(),
+            MPL_ID.to_bytes().as_ref(),
             nft_mint_key.to_bytes().as_ref(),
         ],
-        &mpl_token_metadata::id(),
+        &MPL_ID,
     );
     let (protocol_position_key, __bump) = Pubkey::find_program_address(
         &[
@@ -185,7 +184,7 @@ pub fn open_position_instr(
             system_program: system_program::id(),
             token_program: spl_token::id(),
             associated_token_program: spl_associated_token_account::id(),
-            metadata_program: mpl_token_metadata::id(),
+            metadata_program: MPL_ID,
             token_program_2022: spl_token_2022::id(),
             vault_0_mint: token_mint_0,
             vault_1_mint: token_mint_1,
@@ -367,7 +366,7 @@ pub fn decrease_liquidity_instr(
             recipient_token_account_1: user_token_account_1,
             token_program: spl_token::id(),
             token_program_2022: spl_token_2022::id(),
-            memo_program: spl_memo::id(),
+            memo_program: MEMO_ID,
             vault_0_mint: token_mint_0,
             vault_1_mint: token_mint_1,
         })
@@ -498,7 +497,7 @@ pub fn swap_v2_instr(
             observation_state,
             token_program: spl_token::id(),
             token_program_2022: spl_token_2022::id(),
-            memo_program: spl_memo::id(),
+            memo_program: MEMO_ID,
             input_vault_mint,
             output_vault_mint,
         })

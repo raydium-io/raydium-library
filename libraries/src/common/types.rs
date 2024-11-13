@@ -228,8 +228,17 @@ impl CommonConfig {
         Cluster::Custom(http_url, ws_url)
     }
 
+    pub fn set_cluster(&mut self, http_url: &str, ws_url: &str) {
+        self.http_url = Some(http_url.to_string());
+        self.ws_url = Some(ws_url.to_string());
+    }
+
     pub fn wallet(&self) -> String {
         self.clone().wallet_path.unwrap_or("".to_string())
+    }
+
+    pub fn set_wallet(&mut self, wallet_path: &str) {
+        self.wallet_path = Some(wallet_path.to_string());
     }
 
     pub fn clmm_program(&self) -> Pubkey {
@@ -240,12 +249,20 @@ impl CommonConfig {
         }
     }
 
+    pub fn set_clmm_program(&mut self, clmm_program: &str) {
+        self.raydium_clmm_program = Some(Pubkey::from_str(clmm_program).unwrap());
+    }
+
     pub fn cp_program(&self) -> Pubkey {
         if self.raydium_cp_swap_program.is_none() {
             Pubkey::default()
         } else {
             self.raydium_cp_swap_program.unwrap()
         }
+    }
+
+    pub fn set_cp_program(&mut self, cp_swap_program: &str) {
+        self.raydium_cp_swap_program = Some(Pubkey::from_str(cp_swap_program).unwrap());
     }
 
     pub fn amm_program(&self) -> Pubkey {
@@ -256,6 +273,10 @@ impl CommonConfig {
         }
     }
 
+    pub fn set_amm_program(&mut self, amm_program: &str) {
+        self.raydium_amm_program = Some(Pubkey::from_str(amm_program).unwrap());
+    }
+
     pub fn openbook_program(&self) -> Pubkey {
         if self.openbook_program.is_none() {
             Pubkey::default()
@@ -263,12 +284,23 @@ impl CommonConfig {
             self.openbook_program.unwrap()
         }
     }
+    pub fn set_openbook_program(&mut self, openbook_program: &str) {
+        self.openbook_program = Some(Pubkey::from_str(openbook_program).unwrap());
+    }
 
     pub fn slippage(&self) -> u64 {
         self.slippage_bps.unwrap_or(0)
     }
 
+    pub fn set_slippage(&mut self, slippage_bps: u64) {
+        self.slippage_bps = Some(slippage_bps);
+    }
+
     pub fn simulate(&self) -> bool {
         self.simulate
+    }
+
+    pub fn set_simulate(&mut self, simulate: bool) {
+        self.simulate = simulate;
     }
 }

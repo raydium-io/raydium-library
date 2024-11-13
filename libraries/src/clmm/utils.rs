@@ -1,4 +1,3 @@
-use crate::common::{deserialize_anchor_account, rpc, types::TokenInfo, utils};
 use crate::{
     clmm::{
         clmm_math,
@@ -7,7 +6,7 @@ use crate::{
             StepComputations, SwapState,
         },
     },
-    common,
+    common::{deserialize_anchor_account, rpc, types::TokenInfo, utils},
 };
 use anyhow::Result;
 use arrayref::array_ref;
@@ -645,7 +644,7 @@ pub fn get_nft_accounts_and_positions_by_owner(
     owner: &Pubkey,
     raydium_amm_v3_program: &Pubkey,
 ) -> (Vec<TokenInfo>, Vec<Pubkey>) {
-    let nft_accounts_info = common::utils::get_nft_accounts_by_owner(client, owner);
+    let nft_accounts_info = utils::get_nft_accounts_by_owner(client, owner);
     let user_position_account: Vec<Pubkey> = nft_accounts_info
         .iter()
         .map(|&nft| {

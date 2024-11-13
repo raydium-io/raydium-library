@@ -1,45 +1,279 @@
+use crate::amm;
 use crate::common;
+use arrayref::array_ref;
+
 use anyhow::Result;
 
+use amm::types::{AmmDepositInfoResult, AmmKeys, AmmSwapInfoResult, AmmWithdrawInfoResult};
 use common::rpc;
+use raydium_amm::state::Loadable;
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::pubkey::Pubkey;
 
-#[derive(Clone, Copy, Debug)]
-pub struct AmmKeys {
-    pub amm_pool: Pubkey,
-    pub amm_coin_mint: Pubkey,
-    pub amm_pc_mint: Pubkey,
-    pub amm_authority: Pubkey,
-    pub amm_target: Pubkey,
-    pub amm_coin_vault: Pubkey,
-    pub amm_pc_vault: Pubkey,
-    pub amm_lp_mint: Pubkey,
-    pub amm_open_order: Pubkey,
-    pub market_program: Pubkey,
-    pub market: Pubkey,
-    pub nonce: u8,
+pub fn calculate_deposit_info(
+    rpc_client: &RpcClient,
+    amm_program: Pubkey,
+    pool_id: Pubkey,
+    amount_specified: u64,
+    another_min_limit: bool,
+    slippage_bps: u64,
+    base_side: u64,
+) -> Result<AmmDepositInfoResult> {
+    // load amm keys
+    let amm_keys = load_amm_keys(&rpc_client, &amm_program, &pool_id).unwrap();
+    // reload accounts data to calculate amm pool vault amount
+    // get multiple accounts at the same time to ensure data consistency
+    let load_pubkeys = vec![
+        pool_id,
+        amm_keys.amm_target,
+        amm_keys.amm_pc_vault,
+        amm_keys.amm_coin_vault,
+    ];
+    let rsps = common::rpc::get_multiple_accounts(&rpc_client, &load_pubkeys).unwrap();
+    let accounts = array_ref![rsps, 0, 4];
+    let [amm_account, amm_target_account, amm_pc_vault_account, amm_coin_vault_account] = accounts;
+
+    let amm_state =
+        raydium_amm::state::AmmInfo::load_from_bytes(&amm_account.as_ref().unwrap().data).unwrap();
+    let mut amm_state = amm_state.clone();
+    let amm_target_state = raydium_amm::state::TargetOrders::load_from_bytes(
+        &amm_target_account.as_ref().unwrap().data,
+    )
+    .unwrap();
+    let amm_pc_vault = common::unpack_token(&amm_pc_vault_account.as_ref().unwrap().data).unwrap();
+    let amm_coin_vault =
+        common::unpack_token(&amm_coin_vault_account.as_ref().unwrap().data).unwrap();
+
+    // assert for amm not share any liquidity to openbook
+    assert_eq!(
+        raydium_amm::state::AmmStatus::from_u64(amm_state.status).orderbook_permission(),
+        false
+    );
+    // calculate pool vault amount without take pnl
+    let (amm_pool_pc_vault_amount, amm_pool_coin_vault_amount) =
+        raydium_amm::math::Calculator::calc_total_without_take_pnl_no_orderbook(
+            amm_pc_vault.base.amount,
+            amm_coin_vault.base.amount,
+            &amm_state,
+        )
+        .unwrap();
+    // calculate pool vault amount after take pnl
+    let (pool_pc_vault_amount, pool_coin_vault_amount) = amm::amm_math::pool_vault_deduct_pnl(
+        amm_pool_pc_vault_amount,
+        amm_pool_coin_vault_amount,
+        &mut amm_state,
+        &amm_target_state,
+    )
+    .unwrap();
+
+    let (max_coin_amount, max_pc_amount, another_min_amount) =
+        amm::amm_math::deposit_amount_with_slippage(
+            pool_pc_vault_amount,
+            pool_coin_vault_amount,
+            amount_specified,
+            another_min_limit,
+            base_side,
+            slippage_bps,
+        )
+        .unwrap();
+    Ok(AmmDepositInfoResult {
+        pool_id,
+        amm_authority: amm_keys.amm_authority,
+        amm_open_orders: amm_keys.amm_open_order,
+        amm_target_orders: amm_keys.amm_target,
+        amm_lp_mint: amm_keys.amm_lp_mint,
+        amm_coin_mint: amm_keys.amm_coin_mint,
+        amm_pc_mint: amm_keys.amm_pc_mint,
+        amm_coin_vault: amm_keys.amm_coin_vault,
+        amm_pc_vault: amm_keys.amm_pc_vault,
+        market: amm_keys.amm_open_order, // padding readonly account
+        market_event_queue: amm_keys.amm_open_order, // padding readonly account
+        max_coin_amount,
+        max_pc_amount,
+        another_min_amount,
+        base_side,
+    })
 }
 
-pub enum CalculateMethod {
-    CalculateWithLoadAccount,
-    Simulate(Pubkey),
+pub fn calculate_withdraw_info(
+    rpc_client: &RpcClient,
+    amm_program: Pubkey,
+    pool_id: Pubkey,
+    input_lp_amount: u64,
+    slippage_bps: Option<u64>,
+) -> Result<AmmWithdrawInfoResult> {
+    // load amm keys
+    let amm_keys = load_amm_keys(&rpc_client, &amm_program, &pool_id).unwrap();
+    // reload accounts data to calculate amm pool vault amount
+    // get multiple accounts at the same time to ensure data consistency
+    let load_pubkeys = vec![
+        pool_id,
+        amm_keys.amm_target,
+        amm_keys.amm_pc_vault,
+        amm_keys.amm_coin_vault,
+    ];
+    let rsps = common::rpc::get_multiple_accounts(&rpc_client, &load_pubkeys).unwrap();
+    let accounts = array_ref![rsps, 0, 4];
+    let [amm_account, amm_target_account, amm_pc_vault_account, amm_coin_vault_account] = accounts;
+
+    let amm_state =
+        raydium_amm::state::AmmInfo::load_from_bytes(&amm_account.as_ref().unwrap().data).unwrap();
+    let mut amm_state = amm_state.clone();
+    let amm_target_state = raydium_amm::state::TargetOrders::load_from_bytes(
+        &amm_target_account.as_ref().unwrap().data,
+    )
+    .unwrap();
+    let amm_pc_vault = common::unpack_token(&amm_pc_vault_account.as_ref().unwrap().data).unwrap();
+    let amm_coin_vault =
+        common::unpack_token(&amm_coin_vault_account.as_ref().unwrap().data).unwrap();
+
+    // assert for amm not share any liquidity to openbook
+    assert_eq!(
+        raydium_amm::state::AmmStatus::from_u64(amm_state.status).orderbook_permission(),
+        false
+    );
+    // calculate pool vault amount without take pnl
+    let (amm_pool_pc_vault_amount, amm_pool_coin_vault_amount) =
+        raydium_amm::math::Calculator::calc_total_without_take_pnl_no_orderbook(
+            amm_pc_vault.base.amount,
+            amm_coin_vault.base.amount,
+            &amm_state,
+        )
+        .unwrap();
+    // calculate pool vault amount after take pnl
+    let (pool_pc_vault_amount, pool_coin_vault_amount) = amm::amm_math::pool_vault_deduct_pnl(
+        amm_pool_pc_vault_amount,
+        amm_pool_coin_vault_amount,
+        &mut amm_state,
+        &amm_target_state,
+    )
+    .unwrap();
+
+    let (receive_min_coin_amount, receive_min_pc_amount) =
+        amm::amm_math::withdraw_amounts_with_slippage(
+            pool_pc_vault_amount,
+            pool_coin_vault_amount,
+            amm_state.lp_amount,
+            input_lp_amount,
+            slippage_bps,
+        )
+        .unwrap();
+    Ok(AmmWithdrawInfoResult {
+        pool_id,
+        amm_authority: amm_keys.amm_authority,
+        amm_open_orders: amm_keys.amm_open_order,
+        amm_target_orders: amm_keys.amm_target,
+        amm_lp_mint: amm_keys.amm_lp_mint,
+        amm_coin_vault: amm_keys.amm_coin_vault,
+        amm_pc_vault: amm_keys.amm_pc_vault,
+        amm_coin_mint: amm_keys.amm_coin_mint,
+        amm_pc_mint: amm_keys.amm_pc_mint,
+        market_program: amm_keys.amm_authority, // padding readonly account
+        market: amm_keys.amm_open_order,        // padding readwrite account
+        market_coin_vault: amm_keys.amm_open_order, //padding readwrite account
+        market_pc_vault: amm_keys.amm_open_order, //padding readwrite account
+        market_vault_signer: amm_keys.amm_authority, // padding readonly account
+        market_event_queue: amm_keys.amm_open_order, // padding readwrite account
+        market_bids: amm_keys.amm_open_order,   // padding readwrite account
+        market_asks: amm_keys.amm_open_order,   // padding readwrite account
+        receive_min_coin_amount,
+        receive_min_pc_amount,
+    })
 }
 
-pub enum SwapDirection {
-    /// Input token pc, output token coin
-    PC2Coin,
-    /// Input token coin, output token pc
-    Coin2PC,
-}
+pub fn calculate_swap_info(
+    rpc_client: &RpcClient,
+    amm_program: Pubkey,
+    pool_id: Pubkey,
+    user_input_token: Pubkey,
+    amount_specified: u64,
+    slippage_bps: u64,
+    base_in: bool,
+) -> Result<AmmSwapInfoResult> {
+    // load amm keys
+    let amm_keys = load_amm_keys(&rpc_client, &amm_program, &pool_id).unwrap();
+    // reload accounts data to calculate amm pool vault amount
+    // get multiple accounts at the same time to ensure data consistency
+    let load_pubkeys = vec![
+        pool_id,
+        amm_keys.amm_pc_vault,
+        amm_keys.amm_coin_vault,
+        user_input_token,
+    ];
+    let rsps = common::rpc::get_multiple_accounts(&rpc_client, &load_pubkeys).unwrap();
+    let accounts = array_ref![rsps, 0, 4];
+    let [amm_account, amm_pc_vault_account, amm_coin_vault_account, user_input_token_account] =
+        accounts;
 
-#[derive(Clone, Copy, Debug)]
-pub struct CalculateResult {
-    pub pool_pc_vault_amount: u64,
-    pub pool_coin_vault_amount: u64,
-    pub pool_lp_amount: u64,
-    pub swap_fee_numerator: u64,
-    pub swap_fee_denominator: u64,
+    let amm_state =
+        raydium_amm::state::AmmInfo::load_from_bytes(&amm_account.as_ref().unwrap().data).unwrap();
+    let amm_state = amm_state.clone();
+    let amm_pc_vault = common::unpack_token(&amm_pc_vault_account.as_ref().unwrap().data).unwrap();
+    let amm_coin_vault =
+        common::unpack_token(&amm_coin_vault_account.as_ref().unwrap().data).unwrap();
+    let user_input_token_info =
+        common::unpack_token(&user_input_token_account.as_ref().unwrap().data).unwrap();
+
+    // assert for amm not share any liquidity to openbook
+    assert_eq!(
+        raydium_amm::state::AmmStatus::from_u64(amm_state.status).orderbook_permission(),
+        false
+    );
+    // calculate pool vault amount without take pnl
+    let (amm_pool_pc_vault_amount, amm_pool_coin_vault_amount) =
+        raydium_amm::math::Calculator::calc_total_without_take_pnl_no_orderbook(
+            amm_pc_vault.base.amount,
+            amm_coin_vault.base.amount,
+            &amm_state,
+        )
+        .unwrap();
+
+    let (swap_direction, input_mint, output_mint) =
+        if user_input_token_info.base.mint == amm_keys.amm_coin_mint {
+            (
+                raydium_amm::math::SwapDirection::Coin2PC,
+                amm_keys.amm_coin_mint,
+                amm_keys.amm_pc_mint,
+            )
+        } else if user_input_token_info.base.mint == amm_keys.amm_pc_mint {
+            (
+                raydium_amm::math::SwapDirection::PC2Coin,
+                amm_keys.amm_pc_mint,
+                amm_keys.amm_coin_mint,
+            )
+        } else {
+            panic!("input tokens not match pool vaults");
+        };
+    let other_amount_threshold = amm::amm_math::swap_with_slippage(
+        amm_pool_pc_vault_amount,
+        amm_pool_coin_vault_amount,
+        amm_state.fees.swap_fee_numerator,
+        amm_state.fees.swap_fee_denominator,
+        swap_direction,
+        amount_specified,
+        base_in,
+        slippage_bps,
+    )?;
+
+    Ok(AmmSwapInfoResult {
+        pool_id,
+        amm_authority: amm_keys.amm_authority,
+        amm_open_orders: amm_keys.amm_open_order,
+        amm_coin_vault: amm_keys.amm_coin_vault,
+        amm_pc_vault: amm_keys.amm_pc_vault,
+        input_mint,
+        output_mint,
+        market_program: amm_keys.amm_authority, // padding readonly account
+        market: amm_keys.amm_open_order,        // padding readwrite account
+        market_coin_vault: amm_keys.amm_open_order, // padding readwrite account
+        market_pc_vault: amm_keys.amm_open_order, // padding readwrite account
+        market_vault_signer: amm_keys.amm_authority, // padding readonly account
+        market_event_queue: amm_keys.amm_open_order, // padding readwrite account
+        market_bids: amm_keys.amm_open_order,   // padding readwrite account
+        market_asks: amm_keys.amm_open_order,   // padding readwrite account
+        amount_specified,
+        other_amount_threshold,
+    })
 }
 
 // only use for initialize_amm_pool, because the keys of some amm pools are not used in this way.

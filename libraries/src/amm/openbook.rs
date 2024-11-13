@@ -183,10 +183,10 @@ pub fn list_market(
 
     println!("Creating market {}", market_key.pubkey());
     let create_coin_vault_instr =
-        token::create_ata_token_or_not(&payer.pubkey(), coin_mint, &vault_signer_pk);
+        token::create_ata_token_or_not(&payer.pubkey(), coin_mint, &vault_signer_pk, None);
     instructions.extend_from_slice(create_coin_vault_instr.as_slice());
     let create_pc_vault_instr =
-        token::create_ata_token_or_not(&payer.pubkey(), pc_mint, &vault_signer_pk);
+        token::create_ata_token_or_not(&payer.pubkey(), pc_mint, &vault_signer_pk, None);
     instructions.extend_from_slice(create_pc_vault_instr.as_slice());
     let init_market_instruction = serum_dex::instruction::initialize_market(
         &market_key.pubkey(),

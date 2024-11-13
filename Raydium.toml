@@ -1,0 +1,13 @@
+[cluster]
+http_url = "https://api.mainnet-beta.solana.com"
+ws_url = "wss://api.mainnet-beta.solana.com"
+
+[program]
+raydium_clmm_program = "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK"
+raydium_cp_swap_program = "CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C"
+raydium_amm_program = "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8"
+openbook_program = "srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX"
+
+[info]
+slippage_bps = 100
+wallet_path = ""

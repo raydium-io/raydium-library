@@ -50,6 +50,15 @@ pub struct TransferFeeInfo {
     pub transfer_fee: u64,
 }
 
+pub enum InstructionDecodeType {
+    BaseHex,
+    Base64,
+    Base58,
+}
+pub const PROGRAM_LOG: &str = "Program log: ";
+pub const PROGRAM_DATA: &str = "Program data: ";
+pub const RAY_LOG: &str = "ray_log: ";
+
 #[derive(Clone, Debug, Parser)]
 pub struct CommonConfig {
     #[clap(global = true, long = "config.http")]

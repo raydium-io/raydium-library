@@ -11,6 +11,7 @@ use raydium_library::{
     clmm::{self, ClmmCommands},
     common::{self, types::CommonConfig},
     cpswap::{self, CpSwapCommands},
+    global::{self, GlobalCommands},
 };
 /// commands
 #[derive(Debug, Parser)]
@@ -26,6 +27,10 @@ pub enum Command {
     AMM {
         #[clap(subcommand)]
         subcmd: AmmCommands,
+    },
+    Global {
+        #[clap(subcommand)]
+        subcmd: GlobalCommands,
     },
 }
 
@@ -62,6 +67,7 @@ pub fn entry(opts: Opts) -> Result<()> {
         Command::CLMM { subcmd } => {
             clmm::process_clmm_commands(subcmd, &config, &mut signing_keypairs).unwrap()
         }
+        Command::Global { subcmd } => global::process_global_commands(subcmd, &config).unwrap(),
     };
     match instructions {
         Some(instructions) => {

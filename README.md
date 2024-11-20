@@ -102,10 +102,18 @@ Options:
 ```rust
 [features]
 # default is mainnet
-devnet = ["raydium-library/devnet"]
+devnet = [
+    "amm-cli/devnet",
+    "clmm-cli/devnet",
+    "cpswap-cli/devnet",
+    "common/devnet",
+]
 
 [dependencies]
-raydium-library = { git = "https://github.com/raydium-io/raydium-library" }
+amm-cli = { git = "https://github.com/raydium-io/raydium-library" }
+clmm-cli = { git = "https://github.com/raydium-io/raydium-library" }
+cpswap-cli = { git = "https://github.com/raydium-io/raydium-library" }
+common = { git = "https://github.com/raydium-io/raydium-library" }
 spl-token = { version = "4.0.0", features = ["no-entrypoint"] }
 spl-associated-token-account = { version = "2.2.0", features = [
     "no-entrypoint",
@@ -125,18 +133,18 @@ use solana_client::rpc_client::RpcClient;
 use solana_sdk::{commitment_config::CommitmentConfig, signer::Signer};
 use std::sync::Arc;
 
-use raydium_library::{
-    amm::{self, AmmCommands},
-    clmm::{self, ClmmCommands},
-    common::{self, types::CommonConfig},
-    cpswap::{self, CpSwapCommands},
+use {
+    amm_cli::{self, AmmCommands},
+    clmm_cli::{self, ClmmCommands},
+    common::{common_types, common_utils, rpc},
+    cpswap_cli::{self, CpSwapCommands},
 };
 ```
 
 3. Custom configuration parameters in your code.
 ```rust
 // default config
-let mut config = common::CommonConfig::default();
+let mut config = common_types::CommonConfig::default();
 // Replace the default configuration parameters you need
 config.set_cluster("http", "ws");
 config.set_wallet("your wallet path");
@@ -147,7 +155,7 @@ config.set_slippage(50);
 
 4. Constructing a signed storage object.
 ```rust
-let payer = common::utils::read_keypair_file(&config.wallet())?;
+let payer = common_utils::read_keypair_file(&config.wallet())?;
 let fee_payer = payer.pubkey();
 let mut signing_keypairs: Vec<Arc<dyn Signer>> = Vec::new();
 let payer: Arc<dyn Signer> = Arc::new(payer);
@@ -168,5 +176,5 @@ let subcmd = AmmCommands::CreatePool {
     init_pc_amount: 100000u64,
     open_time: 0,
 };
-let instruction = amm::process_amm_commands(subcmd, &config).unwrap();
+let instruction = amm_cli::process_amm_commands(subcmd, &config).unwrap();
 ```

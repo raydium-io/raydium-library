@@ -1,11 +1,11 @@
-use crate::amm;
-use crate::common;
+use anyhow::Result;
 use arrayref::array_ref;
 
-use anyhow::Result;
-
-use amm::types::{AmmDepositInfoResult, AmmKeys, AmmSwapInfoResult, AmmWithdrawInfoResult};
-use common::rpc;
+use crate::{
+    amm_math,
+    amm_types::{AmmDepositInfoResult, AmmKeys, AmmSwapInfoResult, AmmWithdrawInfoResult},
+};
+use common::{common_utils, rpc};
 use raydium_amm::state::Loadable;
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::pubkey::Pubkey;
@@ -29,7 +29,7 @@ pub fn calculate_deposit_info(
         amm_keys.amm_pc_vault,
         amm_keys.amm_coin_vault,
     ];
-    let rsps = common::rpc::get_multiple_accounts(&rpc_client, &load_pubkeys).unwrap();
+    let rsps = rpc::get_multiple_accounts(&rpc_client, &load_pubkeys).unwrap();
     let accounts = array_ref![rsps, 0, 4];
     let [amm_account, amm_target_account, amm_pc_vault_account, amm_coin_vault_account] = accounts;
 
@@ -40,9 +40,10 @@ pub fn calculate_deposit_info(
         &amm_target_account.as_ref().unwrap().data,
     )
     .unwrap();
-    let amm_pc_vault = common::unpack_token(&amm_pc_vault_account.as_ref().unwrap().data).unwrap();
+    let amm_pc_vault =
+        common_utils::unpack_token(&amm_pc_vault_account.as_ref().unwrap().data).unwrap();
     let amm_coin_vault =
-        common::unpack_token(&amm_coin_vault_account.as_ref().unwrap().data).unwrap();
+        common_utils::unpack_token(&amm_coin_vault_account.as_ref().unwrap().data).unwrap();
 
     // assert for amm not share any liquidity to openbook
     assert_eq!(
@@ -58,7 +59,7 @@ pub fn calculate_deposit_info(
         )
         .unwrap();
     // calculate pool vault amount after take pnl
-    let (pool_pc_vault_amount, pool_coin_vault_amount) = amm::amm_math::pool_vault_deduct_pnl(
+    let (pool_pc_vault_amount, pool_coin_vault_amount) = amm_math::pool_vault_deduct_pnl(
         amm_pool_pc_vault_amount,
         amm_pool_coin_vault_amount,
         &mut amm_state,
@@ -67,7 +68,7 @@ pub fn calculate_deposit_info(
     .unwrap();
 
     let (max_coin_amount, max_pc_amount, another_min_amount) =
-        amm::amm_math::deposit_amount_with_slippage(
+        amm_math::deposit_amount_with_slippage(
             pool_pc_vault_amount,
             pool_coin_vault_amount,
             amount_specified,
@@ -112,7 +113,7 @@ pub fn calculate_withdraw_info(
         amm_keys.amm_pc_vault,
         amm_keys.amm_coin_vault,
     ];
-    let rsps = common::rpc::get_multiple_accounts(&rpc_client, &load_pubkeys).unwrap();
+    let rsps = rpc::get_multiple_accounts(&rpc_client, &load_pubkeys).unwrap();
     let accounts = array_ref![rsps, 0, 4];
     let [amm_account, amm_target_account, amm_pc_vault_account, amm_coin_vault_account] = accounts;
 
@@ -123,9 +124,10 @@ pub fn calculate_withdraw_info(
         &amm_target_account.as_ref().unwrap().data,
     )
     .unwrap();
-    let amm_pc_vault = common::unpack_token(&amm_pc_vault_account.as_ref().unwrap().data).unwrap();
+    let amm_pc_vault =
+        common_utils::unpack_token(&amm_pc_vault_account.as_ref().unwrap().data).unwrap();
     let amm_coin_vault =
-        common::unpack_token(&amm_coin_vault_account.as_ref().unwrap().data).unwrap();
+        common_utils::unpack_token(&amm_coin_vault_account.as_ref().unwrap().data).unwrap();
 
     // assert for amm not share any liquidity to openbook
     assert_eq!(
@@ -141,7 +143,7 @@ pub fn calculate_withdraw_info(
         )
         .unwrap();
     // calculate pool vault amount after take pnl
-    let (pool_pc_vault_amount, pool_coin_vault_amount) = amm::amm_math::pool_vault_deduct_pnl(
+    let (pool_pc_vault_amount, pool_coin_vault_amount) = amm_math::pool_vault_deduct_pnl(
         amm_pool_pc_vault_amount,
         amm_pool_coin_vault_amount,
         &mut amm_state,
@@ -150,7 +152,7 @@ pub fn calculate_withdraw_info(
     .unwrap();
 
     let (receive_min_coin_amount, receive_min_pc_amount) =
-        amm::amm_math::withdraw_amounts_with_slippage(
+        amm_math::withdraw_amounts_with_slippage(
             pool_pc_vault_amount,
             pool_coin_vault_amount,
             amm_state.lp_amount,
@@ -200,7 +202,7 @@ pub fn calculate_swap_info(
         amm_keys.amm_coin_vault,
         user_input_token,
     ];
-    let rsps = common::rpc::get_multiple_accounts(&rpc_client, &load_pubkeys).unwrap();
+    let rsps = rpc::get_multiple_accounts(&rpc_client, &load_pubkeys).unwrap();
     let accounts = array_ref![rsps, 0, 4];
     let [amm_account, amm_pc_vault_account, amm_coin_vault_account, user_input_token_account] =
         accounts;
@@ -208,11 +210,12 @@ pub fn calculate_swap_info(
     let amm_state =
         raydium_amm::state::AmmInfo::load_from_bytes(&amm_account.as_ref().unwrap().data).unwrap();
     let amm_state = amm_state.clone();
-    let amm_pc_vault = common::unpack_token(&amm_pc_vault_account.as_ref().unwrap().data).unwrap();
+    let amm_pc_vault =
+        common_utils::unpack_token(&amm_pc_vault_account.as_ref().unwrap().data).unwrap();
     let amm_coin_vault =
-        common::unpack_token(&amm_coin_vault_account.as_ref().unwrap().data).unwrap();
+        common_utils::unpack_token(&amm_coin_vault_account.as_ref().unwrap().data).unwrap();
     let user_input_token_info =
-        common::unpack_token(&user_input_token_account.as_ref().unwrap().data).unwrap();
+        common_utils::unpack_token(&user_input_token_account.as_ref().unwrap().data).unwrap();
 
     // assert for amm not share any liquidity to openbook
     assert_eq!(
@@ -244,7 +247,7 @@ pub fn calculate_swap_info(
         } else {
             panic!("input tokens not match pool vaults");
         };
-    let other_amount_threshold = amm::amm_math::swap_with_slippage(
+    let other_amount_threshold = amm_math::swap_with_slippage(
         amm_pool_pc_vault_amount,
         amm_pool_coin_vault_amount,
         amm_state.fees.swap_fee_numerator,

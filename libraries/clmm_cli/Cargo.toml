@@ -1,0 +1,43 @@
+[package]
+name = "clmm-cli"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+devnet = ["raydium-amm-v3/devnet"]
+
+[dependencies]
+anchor-client = "=0.29.0"
+anchor-lang = "=0.29.0"
+anchor-spl = { version = "=0.29.0", features = ["memo", "metadata"] }
+raydium-amm-v3 = { git = "https://github.com/raydium-io/raydium-clmm", features = [
+    "client",
+    "no-entrypoint",
+] }
+common = { path = "../common" }
+spl-token = { version = "=4.0.0", features = ["no-entrypoint"] }
+spl-associated-token-account = { version = "2.2.0", features = [
+    "no-entrypoint",
+] }
+spl-memo = "=4.0.0"
+spl-token-2022 = { version = "=0.9.0", features = ["no-entrypoint"] }
+solana-client = "<1.17.0"
+solana-sdk = "<1.17.0"
+solana-account-decoder = "<1.17.0"
+solana-transaction-status = "<1.17.0"
+anyhow = "1.0.53"
+rand = "0.7.3"
+bytemuck = { version = "1.7.3" }
+serde_json = { version = "1.0.78" }
+serde = { version = "1.0", features = ["derive"] }
+base64 = "0.22.1"
+bs58 = { version = "0.5.1" }
+bincode = { version = "1.3.3" }
+arrayref = "0.3.6"
+clap = { version = "4.1.8", features = ["derive"] }
+toml = "0.8.19"
+colorful = "0.2.2"
+hex = "0.4.3"
+
+[lib]
+crate-type = ["cdylib", "lib"]

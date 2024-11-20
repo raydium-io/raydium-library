@@ -1,8 +1,8 @@
-use crate::amm;
-use crate::common;
+use crate::{amm_instructions, amm_utils, decode_amm_ix_event, openbook};
 use anyhow::Ok;
 use anyhow::Result;
 use clap::Parser;
+use common::{common_types, common_utils, rpc, token};
 use raydium_amm::state::Loadable;
 use solana_client::{
     rpc_client::RpcClient,
@@ -123,13 +123,23 @@ pub enum AmmCommands {
         #[clap(long)]
         pc_mint: Option<Pubkey>,
     },
+    DecodeIx {
+        // Instruction hex data
+        #[clap(short, long)]
+        ix_data: String,
+    },
+    DecodeEvent {
+        // Program event log
+        #[clap(short, long)]
+        event_data: String,
+    },
 }
 pub fn process_amm_commands(
     command: AmmCommands,
-    config: &common::types::CommonConfig,
+    config: &common_types::CommonConfig,
 ) -> Result<Option<Vec<Instruction>>> {
     let rpc_client = RpcClient::new(config.cluster().url());
-    let wallet_keypair = common::utils::read_keypair_file(&config.wallet())?;
+    let wallet_keypair = common_utils::read_keypair_file(&config.wallet())?;
     let payer_pubkey = wallet_keypair.pubkey();
 
     match command {
@@ -143,22 +153,19 @@ pub fn process_amm_commands(
             init_pc_amount,
             open_time,
         } => {
-            let market_keys = amm::openbook::get_keys_for_market(
-                &rpc_client,
-                &config.openbook_program(),
-                &market,
-            )
-            .unwrap();
+            let market_keys =
+                openbook::get_keys_for_market(&rpc_client, &config.openbook_program(), &market)
+                    .unwrap();
             assert_eq!(coin_mint, *market_keys.coin_mint);
             assert_eq!(pc_mint, *market_keys.pc_mint);
-            let amm_keys = amm::utils::get_amm_pda_keys(
+            let amm_keys = amm_utils::get_amm_pda_keys(
                 &config.amm_program(),
                 &config.openbook_program(),
                 &market,
                 &coin_mint,
                 &pc_mint,
             )?;
-            let instruction = amm::initialize_amm_pool(
+            let instruction = amm_instructions::initialize_amm_pool(
                 &config.amm_program(),
                 &amm_keys,
                 &raydium_amm::processor::config_feature::create_pool_fee_address::id(),
@@ -185,7 +192,7 @@ pub fn process_amm_commands(
             base_coin,
         } => {
             let base_side = if base_coin { 0 } else { 1 };
-            let result = amm::utils::calculate_deposit_info(
+            let result = amm_utils::calculate_deposit_info(
                 &rpc_client,
                 config.amm_program(),
                 pool_id,
@@ -217,7 +224,7 @@ pub fn process_amm_commands(
                 recipient_token_lp
             } else {
                 // create ata token lp or not
-                let create_user_token_lp_instr = common::token::create_ata_token_or_not(
+                let create_user_token_lp_instr = token::create_ata_token_or_not(
                     &payer_pubkey,
                     &result.amm_lp_mint,
                     &payer_pubkey,
@@ -263,7 +270,7 @@ pub fn process_amm_commands(
             input_lp_amount,
             slippage_limit,
         } => {
-            let result = amm::utils::calculate_withdraw_info(
+            let result = amm_utils::calculate_withdraw_info(
                 &rpc_client,
                 config.amm_program(),
                 pool_id,
@@ -288,7 +295,7 @@ pub fn process_amm_commands(
                 recipient_token_coin
             } else {
                 // create ata token coin or not
-                let create_user_token_coin_instr = common::token::create_ata_token_or_not(
+                let create_user_token_coin_instr = token::create_ata_token_or_not(
                     &payer_pubkey,
                     &result.amm_coin_mint,
                     &payer_pubkey,
@@ -305,7 +312,7 @@ pub fn process_amm_commands(
                 recipient_token_pc
             } else {
                 // create ata token pc or not
-                let create_user_token_pc_instr = common::token::create_ata_token_or_not(
+                let create_user_token_pc_instr = token::create_ata_token_or_not(
                     &payer_pubkey,
                     &result.amm_pc_mint,
                     &payer_pubkey,
@@ -356,7 +363,7 @@ pub fn process_amm_commands(
             base_out,
         } => {
             let base_in = !base_out;
-            let result = amm::utils::calculate_swap_info(
+            let result = amm_utils::calculate_swap_info(
                 &rpc_client,
                 config.amm_program(),
                 pool_id,
@@ -370,7 +377,7 @@ pub fn process_amm_commands(
                 user_output_token
             } else {
                 // create output token or not
-                let create_user_output_token_instr = common::token::create_ata_token_or_not(
+                let create_user_output_token_instr = token::create_ata_token_or_not(
                     &payer_pubkey,
                     &result.output_mint,
                     &payer_pubkey,
@@ -439,12 +446,10 @@ pub fn process_amm_commands(
         } => {
             if pool_id.is_some() {
                 // fetch specified pool
-                let pool_state = common::rpc::get_account::<raydium_amm::state::AmmInfo>(
-                    &rpc_client,
-                    &pool_id.unwrap(),
-                )
-                .unwrap()
-                .unwrap();
+                let pool_state =
+                    rpc::get_account::<raydium_amm::state::AmmInfo>(&rpc_client, &pool_id.unwrap())
+                        .unwrap()
+                        .unwrap();
                 println!("{:#?}", pool_state);
             } else {
                 // fetch pool by filters
@@ -471,7 +476,7 @@ pub fn process_amm_commands(
                         RpcFilterType::DataSize(pool_len),
                     ]),
                 };
-                let pools = common::rpc::get_program_accounts_with_filters(
+                let pools = rpc::get_program_accounts_with_filters(
                     &rpc_client,
                     config.amm_program(),
                     filters,
@@ -485,6 +490,17 @@ pub fn process_amm_commands(
                     );
                 }
             }
+            return Ok(None);
+        }
+        AmmCommands::DecodeIx { ix_data } => {
+            decode_amm_ix_event::handle_program_instruction(
+                ix_data.as_str(),
+                common_types::InstructionDecodeType::BaseHex,
+            )?;
+            return Ok(None);
+        }
+        AmmCommands::DecodeEvent { event_data } => {
+            decode_amm_ix_event::handle_program_event(event_data.as_str(), false)?;
             return Ok(None);
         }
     }

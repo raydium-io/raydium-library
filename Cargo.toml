@@ -1,3 +1,10 @@
 [workspace]
 resolver = "2"
-members = ["libraries", "client"]
+members = [
+    "libraries/amm_cli",
+    "libraries/cpswap_cli",
+    "libraries/clmm_cli",
+    "libraries/common",
+    "client",
+]
+exclude = ["libraries"]

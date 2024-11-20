@@ -1,7 +1,7 @@
-use crate::clmm;
-use crate::common;
+use crate::{clmm_instructions, clmm_utils, decode_clmm_ix_event};
 use anyhow::Result;
 use clap::Parser;
+use common::{common_types, common_utils, rpc, token};
 use rand::rngs::OsRng;
 use solana_client::{
     rpc_client::RpcClient,
@@ -152,15 +152,25 @@ pub enum ClmmCommands {
         #[clap(long)]
         amm_config: Option<Pubkey>,
     },
+    DecodeIx {
+        // Instruction hex data
+        #[clap(short, long)]
+        ix_data: String,
+    },
+    DecodeEvent {
+        // Program event log
+        #[clap(short, long)]
+        event_data: String,
+    },
 }
 
 pub fn process_clmm_commands(
     command: ClmmCommands,
-    config: &common::types::CommonConfig,
+    config: &common_types::CommonConfig,
     signing_keypairs: &mut Vec<Arc<dyn Signer>>,
 ) -> Result<Option<Vec<Instruction>>> {
     let rpc_client = RpcClient::new(config.cluster().url());
-    let wallet_keypair = common::utils::read_keypair_file(&config.wallet())?;
+    let wallet_keypair = common_utils::read_keypair_file(&config.wallet())?;
     let payer_pubkey = wallet_keypair.pubkey();
     let payer: Arc<dyn Signer> = Arc::new(wallet_keypair);
     if !signing_keypairs.contains(&payer) {
@@ -175,8 +185,8 @@ pub fn process_clmm_commands(
             price,
             open_time,
         } => {
-            let result = clmm::utils::create_pool_price(&rpc_client, mint0, mint1, price)?;
-            let create_pool_instr = clmm::instructions::create_pool_instr(
+            let result = clmm_utils::create_pool_price(&rpc_client, mint0, mint1, price)?;
+            let create_pool_instr = clmm_instructions::create_pool_instr(
                 &config,
                 amm_config,
                 result.mint0,
@@ -199,7 +209,7 @@ pub fn process_clmm_commands(
             with_metadata,
         } => {
             let base_token0 = !base_token1;
-            let result = clmm::utils::calculate_liquidity_change(
+            let result = clmm_utils::calculate_liquidity_change(
                 &rpc_client,
                 pool_id,
                 tick_lower_price,
@@ -229,7 +239,7 @@ pub fn process_clmm_commands(
             };
 
             // load position
-            let (_nft_tokens, positions) = clmm::utils::get_nft_accounts_and_positions_by_owner(
+            let (_nft_tokens, positions) = clmm_utils::get_nft_accounts_and_positions_by_owner(
                 &rpc_client,
                 &payer_pubkey,
                 &config.clmm_program(),
@@ -240,7 +250,7 @@ pub fn process_clmm_commands(
                 match rsp {
                     None => continue,
                     Some(rsp) => {
-                        let position = common::utils::deserialize_anchor_account::<
+                        let position = common_utils::deserialize_anchor_account::<
                             raydium_amm_v3::states::PersonalPositionState,
                         >(&rsp)?;
                         user_positions.push(position);
@@ -277,7 +287,7 @@ pub fn process_clmm_commands(
                 let mut remaining_accounts = Vec::new();
                 remaining_accounts.push(AccountMeta::new(tickarray_bitmap_extension, false));
 
-                let open_position_instr = clmm::open_position_instr(
+                let open_position_instr = clmm_instructions::open_position_instr(
                     &config.clone(),
                     pool_id,
                     result.vault0,
@@ -314,7 +324,7 @@ pub fn process_clmm_commands(
             base_token1,
         } => {
             let base_token0 = !base_token1;
-            let result = clmm::utils::calculate_liquidity_change(
+            let result = clmm_utils::calculate_liquidity_change(
                 &rpc_client,
                 pool_id,
                 tick_lower_price,
@@ -343,7 +353,7 @@ pub fn process_clmm_commands(
                 )
             };
             // load position
-            let (_nft_tokens, positions) = clmm::utils::get_nft_accounts_and_positions_by_owner(
+            let (_nft_tokens, positions) = clmm_utils::get_nft_accounts_and_positions_by_owner(
                 &rpc_client,
                 &payer_pubkey,
                 &config.clmm_program(),
@@ -354,7 +364,7 @@ pub fn process_clmm_commands(
                 match rsp {
                     None => continue,
                     Some(rsp) => {
-                        let position = common::utils::deserialize_anchor_account::<
+                        let position = common_utils::deserialize_anchor_account::<
                             raydium_amm_v3::states::PersonalPositionState,
                         >(&rsp)?;
                         user_positions.push(position);
@@ -383,7 +393,7 @@ pub fn process_clmm_commands(
                 let mut remaining_accounts = Vec::new();
                 remaining_accounts.push(AccountMeta::new(tickarray_bitmap_extension, false));
 
-                let increase_instr = clmm::increase_liquidity_instr(
+                let increase_instr = clmm_instructions::increase_liquidity_instr(
                     &config.clone(),
                     pool_id,
                     result.vault0,
@@ -418,7 +428,7 @@ pub fn process_clmm_commands(
             base_token1,
         } => {
             let base_token0 = !base_token1;
-            let result = clmm::utils::calculate_liquidity_change(
+            let result = clmm_utils::calculate_liquidity_change(
                 &rpc_client,
                 pool_id,
                 tick_lower_price,
@@ -429,7 +439,7 @@ pub fn process_clmm_commands(
                 base_token0,
             )?;
             // load position
-            let (_nft_tokens, positions) = clmm::utils::get_nft_accounts_and_positions_by_owner(
+            let (_nft_tokens, positions) = clmm_utils::get_nft_accounts_and_positions_by_owner(
                 &rpc_client,
                 &payer_pubkey,
                 &config.clmm_program(),
@@ -440,7 +450,7 @@ pub fn process_clmm_commands(
                 match rsp {
                     None => continue,
                     Some(rsp) => {
-                        let position = common::utils::deserialize_anchor_account::<
+                        let position = common_utils::deserialize_anchor_account::<
                             raydium_amm_v3::states::PersonalPositionState,
                         >(&rsp)?;
                         user_positions.push(position);
@@ -462,7 +472,7 @@ pub fn process_clmm_commands(
                     recipient_token0
                 } else {
                     // mint0 maybe token22
-                    let create_user_token0_instr = common::token::create_ata_token_or_not(
+                    let create_user_token0_instr = token::create_ata_token_or_not(
                         &payer_pubkey,
                         &result.mint0,
                         &payer_pubkey,
@@ -480,7 +490,7 @@ pub fn process_clmm_commands(
                     recipient_token1
                 } else {
                     // mint1 maybe token22
-                    let create_user_token1_instr = common::token::create_ata_token_or_not(
+                    let create_user_token1_instr = token::create_ata_token_or_not(
                         &payer_pubkey,
                         &result.mint1,
                         &payer_pubkey,
@@ -510,7 +520,7 @@ pub fn process_clmm_commands(
                     // reward vault mint
                     reward_vault_with_user_token.push(item.reward_mint);
                     // reward mint maybe token22
-                    let create_user_reward_token_instr = common::token::create_ata_token_or_not(
+                    let create_user_reward_token_instr = token::create_ata_token_or_not(
                         &payer_pubkey,
                         &item.reward_mint,
                         &payer_pubkey,
@@ -537,7 +547,7 @@ pub fn process_clmm_commands(
                     .collect();
                 remaining_accounts.append(&mut accounts);
 
-                let decrease_instr = clmm::decrease_liquidity_instr(
+                let decrease_instr = clmm_instructions::decrease_liquidity_instr(
                     &config.clone(),
                     pool_id,
                     result.vault0,
@@ -580,7 +590,7 @@ pub fn process_clmm_commands(
                 &config.clmm_program(),
             )
             .0;
-            let result = clmm::utils::calculate_swap_change(
+            let result = clmm_utils::calculate_swap_change(
                 &rpc_client,
                 config.clmm_program(),
                 pool_id,
@@ -596,7 +606,7 @@ pub fn process_clmm_commands(
             let user_output_token = if let Some(user_output_token) = user_output_token {
                 user_output_token
             } else {
-                let create_user_output_token_instr = common::token::create_ata_token_or_not(
+                let create_user_output_token_instr = token::create_ata_token_or_not(
                     &payer_pubkey,
                     &result.output_vault_mint,
                     &payer_pubkey,
@@ -619,7 +629,7 @@ pub fn process_clmm_commands(
                 .map(|tick_array_address| AccountMeta::new(tick_array_address, false))
                 .collect();
             remaining_accounts.append(&mut accounts);
-            let swap_instr = clmm::swap_v2_instr(
+            let swap_instr = clmm_instructions::swap_v2_instr(
                 &config,
                 result.pool_amm_config,
                 result.pool_id,
@@ -646,13 +656,12 @@ pub fn process_clmm_commands(
         } => {
             if let Some(pool_id) = pool_id {
                 // fetch specified pool
-                let pool_state =
-                    common::rpc::get_anchor_account::<raydium_amm_v3::states::PoolState>(
-                        &rpc_client,
-                        &pool_id,
-                    )
-                    .unwrap()
-                    .unwrap();
+                let pool_state = rpc::get_anchor_account::<raydium_amm_v3::states::PoolState>(
+                    &rpc_client,
+                    &pool_id,
+                )
+                .unwrap()
+                .unwrap();
                 println!("{:#?}", pool_state);
             } else {
                 // fetch pools by filters
@@ -685,7 +694,7 @@ pub fn process_clmm_commands(
                         RpcFilterType::DataSize(pool_len),
                     ]),
                 };
-                let pools = common::rpc::get_program_accounts_with_filters(
+                let pools = rpc::get_program_accounts_with_filters(
                     &rpc_client,
                     config.clmm_program(),
                     filters,
@@ -695,9 +704,9 @@ pub fn process_clmm_commands(
                     println!("pool_id:{}", pool.0);
                     println!(
                         "{:#?}",
-                        common::utils::deserialize_anchor_account::<
-                            raydium_amm_v3::states::PoolState,
-                        >(&pool.1)
+                        common_utils::deserialize_anchor_account::<raydium_amm_v3::states::PoolState>(
+                            &pool.1
+                        )
                     );
                 }
             }
@@ -707,18 +716,20 @@ pub fn process_clmm_commands(
             let mut config_info = "".to_string();
             if let Some(amm_config) = amm_config {
                 // fetch specified amm_config
-                let amm_config_state = common::rpc::get_anchor_account::<
-                    raydium_amm_v3::states::AmmConfig,
-                >(&rpc_client, &amm_config)
-                .unwrap()
-                .unwrap();
+                let amm_config_state =
+                    rpc::get_anchor_account::<raydium_amm_v3::states::AmmConfig>(
+                        &rpc_client,
+                        &amm_config,
+                    )
+                    .unwrap()
+                    .unwrap();
                 // println!("{:#?}", amm_config_state);
                 let trade_fee_rate =
-                    amm_config_state.trade_fee_rate as f64 / common::types::TEN_THOUSAND as f64;
+                    amm_config_state.trade_fee_rate as f64 / common_types::TEN_THOUSAND as f64;
                 let protocol_fee_rate =
-                    amm_config_state.protocol_fee_rate as f64 / common::types::TEN_THOUSAND as f64;
+                    amm_config_state.protocol_fee_rate as f64 / common_types::TEN_THOUSAND as f64;
                 let fund_fee_rate =
-                    amm_config_state.fund_fee_rate as f64 / common::types::TEN_THOUSAND as f64;
+                    amm_config_state.fund_fee_rate as f64 / common_types::TEN_THOUSAND as f64;
                 let string = format!(
                     "amm_config:{}, index:{}, tick_spacing:{}, trade: {:.2}%, protocol: {:.2}%, fund: {:.2}% \n",
                     amm_config,
@@ -731,7 +742,7 @@ pub fn process_clmm_commands(
                 config_info.push_str(string.as_str());
             } else {
                 // fetch all amm_config
-                let amm_configs = common::rpc::get_program_accounts_with_filters(
+                let amm_configs = rpc::get_program_accounts_with_filters(
                     &rpc_client,
                     config.clmm_program(),
                     Some(vec![RpcFilterType::DataSize(
@@ -740,17 +751,17 @@ pub fn process_clmm_commands(
                 )
                 .unwrap();
                 for amm_config in amm_configs {
-                    let amm_config_state = common::utils::deserialize_anchor_account::<
+                    let amm_config_state = common_utils::deserialize_anchor_account::<
                         raydium_amm_v3::states::AmmConfig,
                     >(&amm_config.1)
                     .unwrap();
                     // println!("{:#?}", amm_config_state);
                     let trade_fee_rate =
-                        amm_config_state.trade_fee_rate as f64 / common::types::TEN_THOUSAND as f64;
+                        amm_config_state.trade_fee_rate as f64 / common_types::TEN_THOUSAND as f64;
                     let protocol_fee_rate = amm_config_state.protocol_fee_rate as f64
-                        / common::types::TEN_THOUSAND as f64;
+                        / common_types::TEN_THOUSAND as f64;
                     let fund_fee_rate =
-                        amm_config_state.fund_fee_rate as f64 / common::types::TEN_THOUSAND as f64;
+                        amm_config_state.fund_fee_rate as f64 / common_types::TEN_THOUSAND as f64;
                     let string = format!(
                         "amm_config:{}, index:{}, tick_spacing:{}, trade: {:.2}%, protocol: {:.2}%, fund: {:.2}% \n",
                         amm_config.0,
@@ -766,6 +777,17 @@ pub fn process_clmm_commands(
             if !config_info.is_empty() {
                 println!("{}", config_info);
             }
+            return Ok(None);
+        }
+        ClmmCommands::DecodeIx { ix_data } => {
+            decode_clmm_ix_event::handle_program_instruction(
+                ix_data.as_str(),
+                common_types::InstructionDecodeType::BaseHex,
+            )?;
+            return Ok(None);
+        }
+        ClmmCommands::DecodeEvent { event_data } => {
+            decode_clmm_ix_event::handle_program_event(event_data.as_str(), false)?;
             return Ok(None);
         }
     }

@@ -118,6 +118,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6b2d54853319fd101b8dd81de382bcbf3e03410a64d8928bbee85a3e7dcde483"
 
 [[package]]
+name = "amm-cli"
+version = "0.1.0"
+dependencies = [
+ "anchor-client",
+ "anchor-lang",
+ "anyhow",
+ "arrayref",
+ "bs58 0.5.1",
+ "clap 4.5.21",
+ "common",
+ "hex",
+ "raydium_amm",
+ "safe-transmute",
+ "serum_dex",
+ "solana-client",
+ "solana-sdk",
+ "spl-associated-token-account",
+ "spl-token 4.0.0",
+ "spl-token-2022 0.9.0",
+ "toml 0.8.19",
+]
+
+[[package]]
 name = "anchor-attribute-access-control"
 version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -931,9 +954,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.2.0"
+version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1aeb932158bd710538c73702db6945cb68a8fb08c519e6e12706b94263b36db8"
+checksum = "fd9de9f2205d5ef3fd67e685b0df337994ddd4495e2a28d185500d0e1edfea47"
 dependencies = [
  "jobserver",
  "libc",
@@ -1003,9 +1026,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.5.20"
+version = "4.5.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b97f376d85a664d5837dbae44bf546e6477a679ff6610010f17276f686d867e8"
+checksum = "fb3b4b9e5a7c7514dfa52869339ee98b3156b0bfb4e8a77c4ff4babb64b1604f"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -1013,13 +1036,13 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.5.20"
+version = "4.5.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "19bc80abd44e4bed93ca373a0704ccbd1b710dc5749406201bb018272808dc54"
+checksum = "b17a95aa67cc7b5ebd32aa5370189aa0d79069ef1c64ce893bd30fb24bff20ec"
 dependencies = [
  "anstream",
  "anstyle",
- "clap_lex 0.7.2",
+ "clap_lex 0.7.3",
  "strsim 0.11.1",
 ]
 
@@ -1046,15 +1069,53 @@ dependencies = [
 
 [[package]]
 name = "clap_lex"
-version = "0.7.2"
+version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1462739cb27611015575c0c11df5df7601141071f07518d56fcc1be504cbec97"
+checksum = "afb84c814227b90d6895e01398aee0d8033c00e7466aca416fb6a8e0eb19d8a7"
+
+[[package]]
+name = "clmm-cli"
+version = "0.1.0"
+dependencies = [
+ "anchor-client",
+ "anchor-lang",
+ "anchor-spl",
+ "anyhow",
+ "arrayref",
+ "base64 0.22.1",
+ "bincode",
+ "bs58 0.5.1",
+ "bytemuck",
+ "clap 4.5.21",
+ "colorful",
+ "common",
+ "hex",
+ "rand 0.7.3",
+ "raydium-amm-v3",
+ "serde",
+ "serde_json",
+ "solana-account-decoder",
+ "solana-client",
+ "solana-sdk",
+ "solana-transaction-status",
+ "spl-associated-token-account",
+ "spl-memo",
+ "spl-token 4.0.0",
+ "spl-token-2022 0.9.0",
+ "toml 0.8.19",
+]
 
 [[package]]
 name = "colorchoice"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5b63caa9aa9397e2d9480a9b13673856c78d8ac123288526c37d7839f2a86990"
+
+[[package]]
+name = "colorful"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "97af0562545a7d7f3d9222fcf909963bec36dcb502afaacab98c6ffac8da47ce"
 
 [[package]]
 name = "combine"
@@ -1067,6 +1128,30 @@ dependencies = [
  "either",
  "memchr",
  "unreachable",
+]
+
+[[package]]
+name = "common"
+version = "0.1.0"
+dependencies = [
+ "anchor-client",
+ "anchor-lang",
+ "anchor-spl",
+ "anyhow",
+ "base64 0.22.1",
+ "bincode",
+ "bs58 0.5.1",
+ "clap 4.5.21",
+ "serde",
+ "serde_json",
+ "solana-account-decoder",
+ "solana-client",
+ "solana-sdk",
+ "solana-transaction-status",
+ "spl-associated-token-account",
+ "spl-token 4.0.0",
+ "spl-token-2022 0.9.0",
+ "toml 0.8.19",
 ]
 
 [[package]]
@@ -1138,6 +1223,38 @@ name = "core-foundation-sys"
 version = "0.8.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
+
+[[package]]
+name = "cpswap-cli"
+version = "0.1.0"
+dependencies = [
+ "anchor-client",
+ "anchor-lang",
+ "anchor-spl",
+ "anyhow",
+ "arrayref",
+ "base64 0.22.1",
+ "bincode",
+ "bs58 0.5.1",
+ "bytemuck",
+ "clap 4.5.21",
+ "colorful",
+ "common",
+ "hex",
+ "rand 0.7.3",
+ "raydium-cp-swap",
+ "serde",
+ "serde_json",
+ "solana-account-decoder",
+ "solana-client",
+ "solana-sdk",
+ "solana-transaction-status",
+ "spl-associated-token-account",
+ "spl-memo",
+ "spl-token 4.0.0",
+ "spl-token-2022 0.9.0",
+ "toml 0.8.19",
+]
 
 [[package]]
 name = "cpufeatures"
@@ -1568,9 +1685,9 @@ dependencies = [
 
 [[package]]
 name = "flate2"
-version = "1.0.34"
+version = "1.0.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1b589b4dc103969ad3cf85c950899926ec64300a1a46d76c03a6072957036f0"
+checksum = "c936bfdafb507ebbf50b8074c54fa31c5be9a1e7e5f467dd659697041407d07c"
 dependencies = [
  "crc32fast",
  "miniz_oxide",
@@ -2246,9 +2363,9 @@ checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
 name = "libc"
-version = "0.2.162"
+version = "0.2.164"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18d287de67fe55fd7e1581fe933d965a5a9477b38e949cfa9f8574ef01506398"
+checksum = "433bfe06b8c75da9b2e3fbea6e5329ff87748f0b144ef75306e674c3f6f7c13f"
 
 [[package]]
 name = "libsecp256k1"
@@ -3090,7 +3207,7 @@ dependencies = [
 [[package]]
 name = "raydium-amm-v3"
 version = "0.1.0"
-source = "git+https://github.com/raydium-io/raydium-clmm#212e4d5777892e2931be9d6085b27972cbbedfcf"
+source = "git+https://github.com/raydium-io/raydium-clmm#17582bf74ea6a19cb87655197604544b1858747c"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
@@ -3107,9 +3224,12 @@ dependencies = [
 name = "raydium-cli"
 version = "0.1.0"
 dependencies = [
+ "amm-cli",
  "anyhow",
- "clap 4.5.20",
- "raydium-library",
+ "clap 4.5.21",
+ "clmm-cli",
+ "common",
+ "cpswap-cli",
  "solana-client",
  "solana-sdk",
  "spl-associated-token-account",
@@ -3131,39 +3251,6 @@ dependencies = [
  "spl-memo",
  "spl-token 4.0.0",
  "uint 0.9.5 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "raydium-library"
-version = "0.1.0"
-dependencies = [
- "anchor-client",
- "anchor-lang",
- "anchor-spl",
- "anyhow",
- "arrayref",
- "base64 0.22.1",
- "bincode",
- "bs58 0.5.1",
- "bytemuck",
- "clap 4.5.20",
- "rand 0.7.3",
- "raydium-amm-v3",
- "raydium-cp-swap",
- "raydium_amm",
- "safe-transmute",
- "serde",
- "serde_json",
- "serum_dex",
- "solana-account-decoder",
- "solana-client",
- "solana-sdk",
- "solana-transaction-status",
- "spl-associated-token-account",
- "spl-memo",
- "spl-token 4.0.0",
- "spl-token-2022 0.9.0",
- "toml 0.8.19",
 ]
 
 [[package]]
@@ -3596,9 +3683,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.132"
+version = "1.0.133"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d726bfaff4b320266d395898905d0eba0345aae23b54aee3a737e260fd46db03"
+checksum = "c7fceb2473b9166b2294ef05efcb65a3db80803f0b03ef86a5fc88a2b85ee377"
 dependencies = [
  "itoa",
  "memchr",

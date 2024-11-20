@@ -1,15 +1,13 @@
 use crate::{
-    clmm::{
-        clmm_math,
-        types::{
-            ClmmCreatePoolResult, ClmmLiquidityChangeResult, ClmmSwapChangeResult, RewardItem,
-            StepComputations, SwapState,
-        },
+    clmm_math,
+    clmm_types::{
+        ClmmCreatePoolResult, ClmmLiquidityChangeResult, ClmmSwapChangeResult, RewardItem,
+        StepComputations, SwapState,
     },
-    common::{deserialize_anchor_account, rpc, types::TokenInfo, utils},
 };
 use anyhow::Result;
 use arrayref::array_ref;
+use common::{common_types::TokenInfo, common_utils, rpc};
 use raydium_amm_v3::libraries::{liquidity_math, tick_math};
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::pubkey::Pubkey;
@@ -36,8 +34,8 @@ pub fn create_pool_price(
     let rsps = rpc_client.get_multiple_accounts(&load_pubkeys).unwrap();
     let mint0_token_program = rsps[0].as_ref().unwrap().owner;
     let mint1_token_program = rsps[1].as_ref().unwrap().owner;
-    let mint0_info = utils::unpack_mint(&rsps[0].as_ref().unwrap().data).unwrap();
-    let mint1_info = utils::unpack_mint(&rsps[1].as_ref().unwrap().data).unwrap();
+    let mint0_info = common_utils::unpack_mint(&rsps[0].as_ref().unwrap().data).unwrap();
+    let mint1_info = common_utils::unpack_mint(&rsps[1].as_ref().unwrap().data).unwrap();
     let sqrt_price_x64 = clmm_math::price_to_sqrt_price_x64(
         price,
         mint0_info.base.decimals,
@@ -142,10 +140,10 @@ pub fn calculate_liquidity_change(
         amount_0, amount_1, liquidity
     );
     // calc with slippage
-    let amount_0_with_slippage = utils::amount_with_slippage(amount_0, slippage_bps, true)?;
-    let amount_1_with_slippage = utils::amount_with_slippage(amount_1, slippage_bps, true)?;
+    let amount_0_with_slippage = common_utils::amount_with_slippage(amount_0, slippage_bps, true)?;
+    let amount_1_with_slippage = common_utils::amount_with_slippage(amount_1, slippage_bps, true)?;
     // calc with transfer_fee
-    let transfer_fee = utils::get_pool_mints_inverse_fee(
+    let transfer_fee = common_utils::get_pool_mints_inverse_fee(
         &rpc_client,
         pool.token_mint_0,
         pool.token_mint_1,
@@ -220,17 +218,19 @@ pub fn calculate_swap_change(
         array_ref![rsps, 0, 5];
     let mint0_token_program = mint0_account.as_ref().unwrap().owner;
     let mint1_token_program = mint1_account.as_ref().unwrap().owner;
-    let user_input_state = utils::unpack_token(&user_input_account.as_ref().unwrap().data).unwrap();
-    let mint0_state = utils::unpack_mint(&mint0_account.as_ref().unwrap().data).unwrap();
-    let mint1_state = utils::unpack_mint(&mint1_account.as_ref().unwrap().data).unwrap();
-    let tickarray_bitmap_extension_state =
-        deserialize_anchor_account::<raydium_amm_v3::states::TickArrayBitmapExtension>(
-            tickarray_bitmap_extension_account.as_ref().unwrap(),
-        )
-        .unwrap();
-    let amm_config_state = deserialize_anchor_account::<raydium_amm_v3::states::AmmConfig>(
-        amm_config_account.as_ref().unwrap(),
+    let user_input_state =
+        common_utils::unpack_token(&user_input_account.as_ref().unwrap().data).unwrap();
+    let mint0_state = common_utils::unpack_mint(&mint0_account.as_ref().unwrap().data).unwrap();
+    let mint1_state = common_utils::unpack_mint(&mint1_account.as_ref().unwrap().data).unwrap();
+    let tickarray_bitmap_extension_state = common_utils::deserialize_anchor_account::<
+        raydium_amm_v3::states::TickArrayBitmapExtension,
+    >(
+        tickarray_bitmap_extension_account.as_ref().unwrap()
     )
+    .unwrap();
+    let amm_config_state = common_utils::deserialize_anchor_account::<
+        raydium_amm_v3::states::AmmConfig,
+    >(amm_config_account.as_ref().unwrap())
     .unwrap();
 
     let (
@@ -266,9 +266,9 @@ pub fn calculate_swap_change(
     };
     let transfer_fee = if base_in {
         if zero_for_one {
-            utils::get_transfer_fee(&mint0_state, epoch, amount)
+            common_utils::get_transfer_fee(&mint0_state, epoch, amount)
         } else {
-            utils::get_transfer_fee(&mint1_state, epoch, amount)
+            common_utils::get_transfer_fee(&mint1_state, epoch, amount)
         }
     } else {
         0
@@ -327,16 +327,16 @@ pub fn calculate_swap_change(
     if base_in {
         // calc mint out amount with slippage
         other_amount_threshold =
-            utils::amount_with_slippage(other_amount_threshold, slippage_bps, false)?;
+            common_utils::amount_with_slippage(other_amount_threshold, slippage_bps, false)?;
     } else {
         // calc max in with slippage
         other_amount_threshold =
-            utils::amount_with_slippage(other_amount_threshold, slippage_bps, true)?;
+            common_utils::amount_with_slippage(other_amount_threshold, slippage_bps, true)?;
         // calc max in with transfer_fee
         let transfer_fee = if zero_for_one {
-            utils::get_transfer_inverse_fee(&mint0_state, epoch, other_amount_threshold)
+            common_utils::get_transfer_inverse_fee(&mint0_state, epoch, other_amount_threshold)
         } else {
-            utils::get_transfer_inverse_fee(&mint1_state, epoch, other_amount_threshold)
+            common_utils::get_transfer_inverse_fee(&mint1_state, epoch, other_amount_threshold)
         };
         other_amount_threshold += transfer_fee;
     }
@@ -411,11 +411,10 @@ fn load_cur_and_next_five_tick_array(
     let tick_array_rsps = rpc_client.get_multiple_accounts(&tick_array_keys).unwrap();
     let mut tick_arrays = VecDeque::new();
     for tick_array in tick_array_rsps {
-        let tick_array_state =
-            deserialize_anchor_account::<raydium_amm_v3::states::TickArrayState>(
-                &tick_array.unwrap(),
-            )
-            .unwrap();
+        let tick_array_state = common_utils::deserialize_anchor_account::<
+            raydium_amm_v3::states::TickArrayState,
+        >(&tick_array.unwrap())
+        .unwrap();
         tick_arrays.push_back(tick_array_state);
     }
     tick_arrays
@@ -644,7 +643,7 @@ pub fn get_nft_accounts_and_positions_by_owner(
     owner: &Pubkey,
     raydium_amm_v3_program: &Pubkey,
 ) -> (Vec<TokenInfo>, Vec<Pubkey>) {
-    let nft_accounts_info = utils::get_nft_accounts_by_owner(client, owner);
+    let nft_accounts_info = common_utils::get_nft_accounts_by_owner(client, owner);
     let user_position_account: Vec<Pubkey> = nft_accounts_info
         .iter()
         .map(|&nft| {

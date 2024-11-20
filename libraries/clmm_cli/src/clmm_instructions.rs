@@ -1,9 +1,8 @@
-use crate::common;
 use anchor_client::Client;
 use anchor_lang::prelude::AccountMeta;
 use anchor_spl::{memo::ID as MEMO_ID, metadata::mpl_token_metadata::ID as MPL_ID};
 use anyhow::{format_err, Result};
-use common::types::CommonConfig;
+use common::common_types::CommonConfig;
 use raydium_amm_v3::{
     accounts as raydium_clmm_accounts, instruction as raydium_clmm_instruction,
     states::{

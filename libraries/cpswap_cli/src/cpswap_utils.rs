@@ -1,7 +1,7 @@
-use crate::common;
-use crate::cpswap::types::{CpSwapLiquidityChangeResult, CpSwapSwapChangeResult};
+use crate::cpswap_types::{CpSwapLiquidityChangeResult, CpSwapSwapChangeResult};
 use anyhow::Result;
 use arrayref::array_ref;
+use common::{common_utils, rpc};
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::pubkey::Pubkey;
 use std::convert::{TryFrom, TryInto};
@@ -51,7 +51,7 @@ pub fn add_liquidity_calculate(
     base_token0: bool,
 ) -> Result<CpSwapLiquidityChangeResult> {
     let pool_state =
-        common::rpc::get_anchor_account::<raydium_cp_swap::states::PoolState>(rpc_client, &pool_id)
+        rpc::get_anchor_account::<raydium_cp_swap::states::PoolState>(rpc_client, &pool_id)
             .unwrap()
             .unwrap();
     // load account
@@ -66,13 +66,13 @@ pub fn add_liquidity_calculate(
         array_ref![rsps, 0, 4];
     // docode account
     let token_0_vault_info =
-        common::unpack_token(&token_0_vault_account.as_ref().unwrap().data).unwrap();
+        common_utils::unpack_token(&token_0_vault_account.as_ref().unwrap().data).unwrap();
     let token_1_vault_info =
-        common::unpack_token(&token_1_vault_account.as_ref().unwrap().data).unwrap();
+        common_utils::unpack_token(&token_1_vault_account.as_ref().unwrap().data).unwrap();
     let token_0_mint_info =
-        common::unpack_mint(&token_0_mint_account.as_ref().unwrap().data).unwrap();
+        common_utils::unpack_mint(&token_0_mint_account.as_ref().unwrap().data).unwrap();
     let token_1_mint_info =
-        common::unpack_mint(&token_1_mint_account.as_ref().unwrap().data).unwrap();
+        common_utils::unpack_mint(&token_1_mint_account.as_ref().unwrap().data).unwrap();
     let epoch = rpc_client.get_epoch_info().unwrap().epoch;
 
     let (total_token_0_amount, total_token_1_amount) = pool_state.vault_amount_without_fee(
@@ -82,9 +82,9 @@ pub fn add_liquidity_calculate(
 
     // calculate amount_specified without transfer fee
     let transfer_fee = if base_token0 {
-        common::utils::get_transfer_fee(&token_0_mint_info, epoch, amount_specified)
+        common_utils::get_transfer_fee(&token_0_mint_info, epoch, amount_specified)
     } else {
-        common::utils::get_transfer_fee(&token_1_mint_info, epoch, amount_specified)
+        common_utils::get_transfer_fee(&token_1_mint_info, epoch, amount_specified)
     };
     let specified_without_fee = amount_specified.checked_sub(transfer_fee).unwrap();
     // calculate lp_amount by amount_specified
@@ -113,17 +113,17 @@ pub fn add_liquidity_calculate(
     let another_amount = if base_token0 {
         let token_1_amount: u64 = results.token_1_amount.try_into().unwrap();
         let transfer_fee =
-            common::utils::get_transfer_inverse_fee(&token_1_mint_info, epoch, token_1_amount);
+            common_utils::get_transfer_inverse_fee(&token_1_mint_info, epoch, token_1_amount);
         token_1_amount.checked_add(transfer_fee).unwrap()
     } else {
         let token_0_amount = results.token_0_amount.try_into().unwrap();
         let transfer_fee =
-            common::utils::get_transfer_inverse_fee(&token_0_mint_info, epoch, token_0_amount);
+            common_utils::get_transfer_inverse_fee(&token_0_mint_info, epoch, token_0_amount);
         token_0_amount.checked_add(transfer_fee).unwrap()
     };
     // calc liquidity with slippage
     let liquidity_slippage =
-        common::utils::amount_with_slippage(liquidity as u64, slippage_bps, false)?;
+        common_utils::amount_with_slippage(liquidity as u64, slippage_bps, false)?;
 
     let (amount_0_max, amount_1_max) = if base_token0 {
         (amount_specified, another_amount)
@@ -153,7 +153,7 @@ pub fn remove_liquidity_calculate(
     slippage_bps: u64,
 ) -> Result<CpSwapLiquidityChangeResult> {
     let pool_state =
-        common::rpc::get_anchor_account::<raydium_cp_swap::states::PoolState>(rpc_client, &pool_id)
+        rpc::get_anchor_account::<raydium_cp_swap::states::PoolState>(rpc_client, &pool_id)
             .unwrap()
             .unwrap();
     // load account
@@ -168,13 +168,13 @@ pub fn remove_liquidity_calculate(
         array_ref![rsps, 0, 4];
     // docode account
     let token_0_vault_info =
-        common::unpack_token(&token_0_vault_account.as_ref().unwrap().data).unwrap();
+        common_utils::unpack_token(&token_0_vault_account.as_ref().unwrap().data).unwrap();
     let token_1_vault_info =
-        common::unpack_token(&token_1_vault_account.as_ref().unwrap().data).unwrap();
+        common_utils::unpack_token(&token_1_vault_account.as_ref().unwrap().data).unwrap();
     let token_0_mint_info =
-        common::unpack_mint(&token_0_mint_account.as_ref().unwrap().data).unwrap();
+        common_utils::unpack_mint(&token_0_mint_account.as_ref().unwrap().data).unwrap();
     let token_1_mint_info =
-        common::unpack_mint(&token_1_mint_account.as_ref().unwrap().data).unwrap();
+        common_utils::unpack_mint(&token_1_mint_account.as_ref().unwrap().data).unwrap();
     let epoch = rpc_client.get_epoch_info().unwrap().epoch;
 
     let (total_token_0_amount, total_token_1_amount) = pool_state.vault_amount_without_fee(
@@ -197,14 +197,14 @@ pub fn remove_liquidity_calculate(
     );
     // calc with slippage
     let amount_0_with_slippage =
-        common::utils::amount_with_slippage(results.token_0_amount as u64, slippage_bps, false)?;
+        common_utils::amount_with_slippage(results.token_0_amount as u64, slippage_bps, false)?;
     let amount_1_with_slippage =
-        common::utils::amount_with_slippage(results.token_1_amount as u64, slippage_bps, false)?;
+        common_utils::amount_with_slippage(results.token_1_amount as u64, slippage_bps, false)?;
     // calc with transfer_fee
     let transfer_fee_0 =
-        common::utils::get_transfer_inverse_fee(&token_0_mint_info, epoch, amount_0_with_slippage);
+        common_utils::get_transfer_inverse_fee(&token_0_mint_info, epoch, amount_0_with_slippage);
     let transfer_fee_1 =
-        common::utils::get_transfer_inverse_fee(&token_1_mint_info, epoch, amount_1_with_slippage);
+        common_utils::get_transfer_inverse_fee(&token_1_mint_info, epoch, amount_1_with_slippage);
     println!(
         "transfer_fee_0:{}, transfer_fee_1:{}",
         transfer_fee_0, transfer_fee_1
@@ -238,12 +238,10 @@ pub fn swap_calculate(
     slippage_bps: u64,
     base_in: bool,
 ) -> Result<CpSwapSwapChangeResult> {
-    let pool_state = common::rpc::get_anchor_account::<raydium_cp_swap::states::PoolState>(
-        &rpc_client,
-        &pool_id,
-    )
-    .unwrap()
-    .unwrap();
+    let pool_state =
+        rpc::get_anchor_account::<raydium_cp_swap::states::PoolState>(&rpc_client, &pool_id)
+            .unwrap()
+            .unwrap();
 
     // load account
     let load_pubkeys = vec![
@@ -259,21 +257,21 @@ pub fn swap_calculate(
     let [amm_config_account, token_0_vault_account, token_1_vault_account, token_0_mint_account, token_1_mint_account, user_input_token_account] =
         array_ref![rsps, 0, 6];
     // docode account
-    let amm_config_state = common::utils::deserialize_anchor_account::<
+    let amm_config_state = common_utils::deserialize_anchor_account::<
         raydium_cp_swap::states::AmmConfig,
     >(amm_config_account.as_ref().unwrap())
     .unwrap();
 
     let token_0_vault_info =
-        common::unpack_token(&token_0_vault_account.as_ref().unwrap().data).unwrap();
+        common_utils::unpack_token(&token_0_vault_account.as_ref().unwrap().data).unwrap();
     let token_1_vault_info =
-        common::unpack_token(&token_1_vault_account.as_ref().unwrap().data).unwrap();
+        common_utils::unpack_token(&token_1_vault_account.as_ref().unwrap().data).unwrap();
     let token_0_mint_info =
-        common::unpack_mint(&token_0_mint_account.as_ref().unwrap().data).unwrap();
+        common_utils::unpack_mint(&token_0_mint_account.as_ref().unwrap().data).unwrap();
     let token_1_mint_info =
-        common::unpack_mint(&token_1_mint_account.as_ref().unwrap().data).unwrap();
+        common_utils::unpack_mint(&token_1_mint_account.as_ref().unwrap().data).unwrap();
     let user_input_token_info =
-        common::unpack_token(&user_input_token_account.as_ref().unwrap().data).unwrap();
+        common_utils::unpack_token(&user_input_token_account.as_ref().unwrap().data).unwrap();
 
     let (total_token_0_amount, total_token_1_amount) = pool_state.vault_amount_without_fee(
         token_0_vault_info.base.amount,
@@ -303,9 +301,9 @@ pub fn swap_calculate(
             pool_state.token_0_program,
             pool_state.token_1_program,
             if base_in {
-                common::utils::get_transfer_fee(&token_0_mint_info, epoch, amount_specified)
+                common_utils::get_transfer_fee(&token_0_mint_info, epoch, amount_specified)
             } else {
-                common::utils::get_transfer_inverse_fee(&token_1_mint_info, epoch, amount_specified)
+                common_utils::get_transfer_inverse_fee(&token_1_mint_info, epoch, amount_specified)
             },
         )
     } else if user_input_token_info.base.mint == token_1_vault_info.base.mint {
@@ -320,9 +318,9 @@ pub fn swap_calculate(
             pool_state.token_1_program,
             pool_state.token_0_program,
             if base_in {
-                common::utils::get_transfer_fee(&token_1_mint_info, epoch, amount_specified)
+                common_utils::get_transfer_fee(&token_1_mint_info, epoch, amount_specified)
             } else {
-                common::utils::get_transfer_inverse_fee(&token_0_mint_info, epoch, amount_specified)
+                common_utils::get_transfer_inverse_fee(&token_0_mint_info, epoch, amount_specified)
             },
         )
     } else {
@@ -345,16 +343,16 @@ pub fn swap_calculate(
         let amount_out = u64::try_from(result.destination_amount_swapped).unwrap();
         let transfer_fee = match trade_direction {
             raydium_cp_swap::curve::TradeDirection::ZeroForOne => {
-                common::get_transfer_fee(&token_1_mint_info, epoch, amount_out)
+                common_utils::get_transfer_fee(&token_1_mint_info, epoch, amount_out)
             }
             raydium_cp_swap::curve::TradeDirection::OneForZero => {
-                common::get_transfer_fee(&token_0_mint_info, epoch, amount_out)
+                common_utils::get_transfer_fee(&token_0_mint_info, epoch, amount_out)
             }
         };
         let amount_received = amount_out.checked_sub(transfer_fee).unwrap();
         // calc mint out amount with slippage
         let minimum_amount_out =
-            common::amount_with_slippage(amount_received, slippage_bps, false)?;
+            common_utils::amount_with_slippage(amount_received, slippage_bps, false)?;
         minimum_amount_out
     } else {
         // Take transfer fees into account for actual amount user received
@@ -374,10 +372,18 @@ pub fn swap_calculate(
         let source_amount_swapped = u64::try_from(result.source_amount_swapped).unwrap();
         let amount_in_transfer_fee = match trade_direction {
             raydium_cp_swap::curve::TradeDirection::ZeroForOne => {
-                common::get_transfer_inverse_fee(&token_0_mint_info, epoch, source_amount_swapped)
+                common_utils::get_transfer_inverse_fee(
+                    &token_0_mint_info,
+                    epoch,
+                    source_amount_swapped,
+                )
             }
             raydium_cp_swap::curve::TradeDirection::OneForZero => {
-                common::get_transfer_inverse_fee(&token_1_mint_info, epoch, source_amount_swapped)
+                common_utils::get_transfer_inverse_fee(
+                    &token_1_mint_info,
+                    epoch,
+                    source_amount_swapped,
+                )
             }
         };
         let input_transfer_amount = source_amount_swapped
@@ -385,7 +391,7 @@ pub fn swap_calculate(
             .unwrap();
         // calc max in with slippage
         let max_amount_in =
-            common::amount_with_slippage(input_transfer_amount, slippage_bps, true)?;
+            common_utils::amount_with_slippage(input_transfer_amount, slippage_bps, true)?;
         max_amount_in
     };
 

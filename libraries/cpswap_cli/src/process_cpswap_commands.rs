@@ -1,7 +1,7 @@
-use crate::common;
-use crate::cpswap;
+use crate::{cpswap_instructions, cpswap_utils, decode_cpswap_ix_event};
 use anyhow::Result;
 use clap::Parser;
+use common::{common_types, common_utils, rpc, token};
 use rand::rngs::OsRng;
 use solana_client::{
     rpc_client::RpcClient,
@@ -122,15 +122,25 @@ pub enum CpSwapCommands {
         #[clap(long)]
         amm_config: Option<Pubkey>,
     },
+    DecodeIx {
+        // Instruction hex data
+        #[clap(short, long)]
+        ix_data: String,
+    },
+    DecodeEvent {
+        // Program event log
+        #[clap(short, long)]
+        event_data: String,
+    },
 }
 
 pub fn process_cpswap_commands(
     command: CpSwapCommands,
-    config: &common::types::CommonConfig,
+    config: &common_types::CommonConfig,
     signing_keypairs: &mut Vec<Arc<dyn Signer>>,
 ) -> Result<Option<Vec<Instruction>>> {
     let rpc_client = RpcClient::new(config.cluster().url());
-    let wallet_keypair = common::utils::read_keypair_file(&config.wallet())?;
+    let wallet_keypair = common_utils::read_keypair_file(&config.wallet())?;
     let payer_pubkey = wallet_keypair.pubkey();
     let payer: Arc<dyn Signer> = Arc::new(wallet_keypair);
     if !signing_keypairs.contains(&payer) {
@@ -152,9 +162,9 @@ pub fn process_cpswap_commands(
             let token0_program = rsps[0].as_ref().unwrap().owner;
             let token1_program = rsps[1].as_ref().unwrap().owner;
             let user_token0_account =
-                common::unpack_token(&rsps[0].as_ref().unwrap().data).unwrap();
+                common_utils::unpack_token(&rsps[0].as_ref().unwrap().data).unwrap();
             let user_token1_account =
-                common::unpack_token(&rsps[1].as_ref().unwrap().data).unwrap();
+                common_utils::unpack_token(&rsps[1].as_ref().unwrap().data).unwrap();
 
             let (
                 user_token0,
@@ -203,7 +213,7 @@ pub fn process_cpswap_commands(
                 None
             };
 
-            let initialize_pool_instr = cpswap::instructions::initialize_pool_instr(
+            let initialize_pool_instr = cpswap_instructions::initialize_pool_instr(
                 &config,
                 mint0,
                 mint1,
@@ -229,7 +239,7 @@ pub fn process_cpswap_commands(
             base_token1,
         } => {
             let base_token0 = !base_token1;
-            let result = cpswap::utils::add_liquidity_calculate(
+            let result = cpswap_utils::add_liquidity_calculate(
                 &rpc_client,
                 pool_id,
                 amount_specified,
@@ -259,7 +269,7 @@ pub fn process_cpswap_commands(
             let recipient_token_lp = if let Some(recipient_token_lp) = recipient_token_lp {
                 recipient_token_lp
             } else {
-                let create_user_token_lp_instr = common::token::create_ata_token_or_not(
+                let create_user_token_lp_instr = token::create_ata_token_or_not(
                     &payer_pubkey,
                     &result.mintlp,
                     &payer_pubkey,
@@ -273,7 +283,7 @@ pub fn process_cpswap_commands(
                 )
             };
 
-            let deposit_instr = cpswap::deposit_instr(
+            let deposit_instr = cpswap_instructions::deposit_instr(
                 &config,
                 pool_id,
                 result.mint0,
@@ -298,7 +308,7 @@ pub fn process_cpswap_commands(
             recipient_token1,
             input_lp_amount,
         } => {
-            let result = cpswap::utils::remove_liquidity_calculate(
+            let result = cpswap_utils::remove_liquidity_calculate(
                 &rpc_client,
                 pool_id,
                 input_lp_amount,
@@ -318,7 +328,7 @@ pub fn process_cpswap_commands(
                 recipient_token0
             } else {
                 // mint0 maybe token22
-                let create_user_token0_instr = common::token::create_ata_token_or_not(
+                let create_user_token0_instr = token::create_ata_token_or_not(
                     &payer_pubkey,
                     &result.mint0,
                     &payer_pubkey,
@@ -336,7 +346,7 @@ pub fn process_cpswap_commands(
                 recipient_token1
             } else {
                 // mint1 maybe token22
-                let create_user_token1_instr = common::token::create_ata_token_or_not(
+                let create_user_token1_instr = token::create_ata_token_or_not(
                     &payer_pubkey,
                     &result.mint1,
                     &payer_pubkey,
@@ -351,7 +361,7 @@ pub fn process_cpswap_commands(
                 )
             };
 
-            let withdraw_instr = cpswap::withdraw_instr(
+            let withdraw_instr = cpswap_instructions::withdraw_instr(
                 &config,
                 pool_id,
                 result.mint0,
@@ -377,7 +387,7 @@ pub fn process_cpswap_commands(
             base_out,
         } => {
             let base_in = !base_out;
-            let result = cpswap::utils::swap_calculate(
+            let result = cpswap_utils::swap_calculate(
                 &rpc_client,
                 pool_id,
                 user_input_token,
@@ -390,7 +400,7 @@ pub fn process_cpswap_commands(
             let user_output_token = if let Some(user_output_token) = user_output_token {
                 user_output_token
             } else {
-                let create_user_output_token_instr = common::token::create_ata_token_or_not(
+                let create_user_output_token_instr = token::create_ata_token_or_not(
                     &payer_pubkey,
                     &result.output_mint,
                     &payer_pubkey,
@@ -406,7 +416,7 @@ pub fn process_cpswap_commands(
             };
 
             let swap_instruction = if base_in {
-                cpswap::swap_base_input_instr(
+                cpswap_instructions::swap_base_input_instr(
                     &config,
                     pool_id,
                     result.pool_config,
@@ -423,7 +433,7 @@ pub fn process_cpswap_commands(
                     result.other_amount_threshold,
                 )?
             } else {
-                cpswap::swap_base_output_instr(
+                cpswap_instructions::swap_base_output_instr(
                     &config,
                     pool_id,
                     result.pool_config,
@@ -450,9 +460,10 @@ pub fn process_cpswap_commands(
         } => {
             if let Some(pool_id) = pool_id {
                 // fetch specified pool
-                let pool_state = common::rpc::get_anchor_account::<
-                    raydium_cp_swap::states::PoolState,
-                >(&rpc_client, &pool_id)
+                let pool_state = rpc::get_anchor_account::<raydium_cp_swap::states::PoolState>(
+                    &rpc_client,
+                    &pool_id,
+                )
                 .unwrap()
                 .unwrap();
                 println!("{:#?}", pool_state);
@@ -487,7 +498,7 @@ pub fn process_cpswap_commands(
                         RpcFilterType::DataSize(pool_len),
                     ]),
                 };
-                let pools = common::rpc::get_program_accounts_with_filters(
+                let pools = rpc::get_program_accounts_with_filters(
                     &rpc_client,
                     config.cp_program(),
                     filters,
@@ -497,7 +508,7 @@ pub fn process_cpswap_commands(
                     println!("pool_id:{}", pool.0);
                     println!(
                         "{:#?}",
-                        common::utils::deserialize_anchor_account::<
+                        common_utils::deserialize_anchor_account::<
                             raydium_cp_swap::states::PoolState,
                         >(&pool.1)
                     );
@@ -509,18 +520,20 @@ pub fn process_cpswap_commands(
             let mut config_info = "".to_string();
             if let Some(amm_config) = amm_config {
                 // fetch specified amm_config
-                let amm_config_state = common::rpc::get_anchor_account::<
-                    raydium_cp_swap::states::AmmConfig,
-                >(&rpc_client, &amm_config)
-                .unwrap()
-                .unwrap();
+                let amm_config_state =
+                    rpc::get_anchor_account::<raydium_cp_swap::states::AmmConfig>(
+                        &rpc_client,
+                        &amm_config,
+                    )
+                    .unwrap()
+                    .unwrap();
                 // println!("{:#?}", amm_config_state);
                 let trade_fee_rate =
-                    amm_config_state.trade_fee_rate as f64 / common::types::TEN_THOUSAND as f64;
+                    amm_config_state.trade_fee_rate as f64 / common_types::TEN_THOUSAND as f64;
                 let protocol_fee_rate =
-                    amm_config_state.protocol_fee_rate as f64 / common::types::TEN_THOUSAND as f64;
+                    amm_config_state.protocol_fee_rate as f64 / common_types::TEN_THOUSAND as f64;
                 let fund_fee_rate =
-                    amm_config_state.fund_fee_rate as f64 / common::types::TEN_THOUSAND as f64;
+                    amm_config_state.fund_fee_rate as f64 / common_types::TEN_THOUSAND as f64;
                 let string = format!(
                     "amm_config:{}, index:{}, trade: {:.2}%, protocol: {:.2}%, fund: {:.2}% \n",
                     amm_config,
@@ -532,7 +545,7 @@ pub fn process_cpswap_commands(
                 config_info.push_str(string.as_str());
             } else {
                 // fetch all amm_config
-                let amm_configs = common::rpc::get_program_accounts_with_filters(
+                let amm_configs = rpc::get_program_accounts_with_filters(
                     &rpc_client,
                     config.cp_program(),
                     Some(vec![RpcFilterType::DataSize(
@@ -541,17 +554,17 @@ pub fn process_cpswap_commands(
                 )
                 .unwrap();
                 for amm_config in amm_configs {
-                    let amm_config_state = common::utils::deserialize_anchor_account::<
+                    let amm_config_state = common_utils::deserialize_anchor_account::<
                         raydium_cp_swap::states::AmmConfig,
                     >(&amm_config.1)
                     .unwrap();
                     // println!("{:#?}", amm_config_state);
                     let trade_fee_rate =
-                        amm_config_state.trade_fee_rate as f64 / common::types::TEN_THOUSAND as f64;
+                        amm_config_state.trade_fee_rate as f64 / common_types::TEN_THOUSAND as f64;
                     let protocol_fee_rate = amm_config_state.protocol_fee_rate as f64
-                        / common::types::TEN_THOUSAND as f64;
+                        / common_types::TEN_THOUSAND as f64;
                     let fund_fee_rate =
-                        amm_config_state.fund_fee_rate as f64 / common::types::TEN_THOUSAND as f64;
+                        amm_config_state.fund_fee_rate as f64 / common_types::TEN_THOUSAND as f64;
                     let string = format!(
                         "amm_config:{}, index:{}, trade: {:.2}%, protocol: {:.2}%, fund: {:.2}% \n",
                         amm_config.0,
@@ -566,6 +579,17 @@ pub fn process_cpswap_commands(
             if !config_info.is_empty() {
                 println!("{}", config_info);
             }
+            return Ok(None);
+        }
+        CpSwapCommands::DecodeIx { ix_data } => {
+            decode_cpswap_ix_event::handle_program_instruction(
+                ix_data.as_str(),
+                common_types::InstructionDecodeType::BaseHex,
+            )?;
+            return Ok(None);
+        }
+        CpSwapCommands::DecodeEvent { event_data } => {
+            decode_cpswap_ix_event::handle_program_event(event_data.as_str(), false)?;
             return Ok(None);
         }
     }

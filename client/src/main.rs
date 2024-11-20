@@ -6,12 +6,11 @@ use solana_client::rpc_client::RpcClient;
 use solana_sdk::{commitment_config::CommitmentConfig, signer::Signer};
 use std::sync::Arc;
 
-use raydium_library::{
-    amm::{self, AmmCommands},
-    clmm::{self, ClmmCommands},
-    common::{self, types::CommonConfig},
-    cpswap::{self, CpSwapCommands},
-    global::{self, GlobalCommands},
+use {
+    amm_cli::{self, AmmCommands},
+    clmm_cli::{self, ClmmCommands},
+    common::{common_types, common_utils, rpc},
+    cpswap_cli::{self, CpSwapCommands},
 };
 /// commands
 #[derive(Debug, Parser)]
@@ -28,30 +27,26 @@ pub enum Command {
         #[clap(subcommand)]
         subcmd: AmmCommands,
     },
-    Global {
-        #[clap(subcommand)]
-        subcmd: GlobalCommands,
-    },
 }
 
 #[derive(Debug, Parser)]
 pub struct Opts {
     #[clap(flatten)]
-    pub command_override: CommonConfig,
+    pub command_override: common_types::CommonConfig,
     #[clap(subcommand)]
     pub command: Command,
 }
 
 pub fn entry(opts: Opts) -> Result<()> {
     // default config
-    let mut config = common::CommonConfig::default();
+    let mut config = common_types::CommonConfig::default();
     // config file override
     config.file_override().unwrap();
     // config command override
     let command_override = opts.command_override;
     config.command_override(command_override);
 
-    let payer = common::utils::read_keypair_file(&config.wallet())?;
+    let payer = common_utils::read_keypair_file(&config.wallet())?;
     let fee_payer = payer.pubkey();
     let mut signing_keypairs: Vec<Arc<dyn Signer>> = Vec::new();
     let payer: Arc<dyn Signer> = Arc::new(payer);
@@ -61,22 +56,21 @@ pub fn entry(opts: Opts) -> Result<()> {
 
     let instructions = match opts.command {
         Command::CPSWAP { subcmd } => {
-            cpswap::process_cpswap_commands(subcmd, &config, &mut signing_keypairs).unwrap()
+            cpswap_cli::process_cpswap_commands(subcmd, &config, &mut signing_keypairs).unwrap()
         }
-        Command::AMM { subcmd } => amm::process_amm_commands(subcmd, &config).unwrap(),
+        Command::AMM { subcmd } => amm_cli::process_amm_commands(subcmd, &config).unwrap(),
         Command::CLMM { subcmd } => {
-            clmm::process_clmm_commands(subcmd, &config, &mut signing_keypairs).unwrap()
+            clmm_cli::process_clmm_commands(subcmd, &config, &mut signing_keypairs).unwrap()
         }
-        Command::Global { subcmd } => global::process_global_commands(subcmd, &config).unwrap(),
     };
     match instructions {
         Some(instructions) => {
             // build txn
             let rpc_client = RpcClient::new(config.cluster().url());
-            let txn = common::build_txn(&rpc_client, &instructions, &fee_payer, &signing_keypairs)
-                .unwrap();
+            let txn =
+                rpc::build_txn(&rpc_client, &instructions, &fee_payer, &signing_keypairs).unwrap();
             if config.simulate() {
-                let sig = common::simulate_transaction(
+                let sig = rpc::simulate_transaction(
                     &rpc_client,
                     &txn,
                     false,
@@ -85,7 +79,7 @@ pub fn entry(opts: Opts) -> Result<()> {
                 println!("{:#?}", sig);
             } else {
                 //  send txn
-                let sig = common::send_txn(&rpc_client, &txn, true);
+                let sig = rpc::send_txn(&rpc_client, &txn, true);
                 println!("{:#?}", sig);
             }
         }

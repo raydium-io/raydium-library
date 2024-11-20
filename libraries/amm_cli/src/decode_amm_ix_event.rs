@@ -1,6 +1,6 @@
-use crate::common::{self, InstructionDecodeType};
 use anchor_client::ClientError;
 use anyhow::Result;
+use common::{common_types, InstructionDecodeType};
 use raydium_amm::{instruction::*, log::decode_ray_log};
 
 pub fn handle_program_instruction(
@@ -45,9 +45,9 @@ pub fn handle_program_event(log_event: &str, with_prefix: bool) -> Result<(), Cl
     // Log emitted from the current program.
     if let Some(log) = if with_prefix {
         log_event
-            .strip_prefix(common::types::PROGRAM_LOG)
-            .or_else(|| log_event.strip_prefix(common::types::PROGRAM_DATA))
-            .or_else(|| log_event.strip_prefix(common::types::RAY_LOG))
+            .strip_prefix(common_types::PROGRAM_LOG)
+            .or_else(|| log_event.strip_prefix(common_types::PROGRAM_DATA))
+            .or_else(|| log_event.strip_prefix(common_types::RAY_LOG))
     } else {
         Some(log_event)
     } {

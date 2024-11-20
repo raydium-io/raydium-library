@@ -1,6 +1,4 @@
-use crate::amm;
-use amm::openbook;
-use amm::types::AmmKeys;
+use crate::{amm_types::AmmKeys, openbook};
 use anyhow::Result;
 use solana_sdk::{instruction::Instruction, pubkey::Pubkey};
 

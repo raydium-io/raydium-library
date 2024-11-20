@@ -1,4 +1,4 @@
-use crate::common::types::{ExtensionStruct, TokenInfo, TransferFeeInfo, TEN_THOUSAND};
+use crate::common_types::{ExtensionStruct, TokenInfo, TransferFeeInfo, TEN_THOUSAND};
 use anchor_lang::AccountDeserialize;
 use anyhow::{format_err, Result};
 use solana_account_decoder::{

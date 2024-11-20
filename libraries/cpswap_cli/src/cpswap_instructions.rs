@@ -1,15 +1,12 @@
-use crate::common;
+use anchor_client::Client;
+use anchor_spl::memo::ID as MEMO_ID;
+use common::common_types::CommonConfig;
 use raydium_cp_swap::{
     accounts as raydium_cp_accounts, instruction as raydium_cp_instruction,
     states::{AMM_CONFIG_SEED, OBSERVATION_SEED, POOL_LP_MINT_SEED, POOL_SEED, POOL_VAULT_SEED},
     AUTH_SEED,
 };
 use solana_sdk::{instruction::Instruction, pubkey::Pubkey, system_program, sysvar};
-
-use anchor_client::Client;
-use anchor_spl::memo::ID as MEMO_ID;
-
-use common::types::CommonConfig;
 
 use anyhow::{format_err, Result};
 use std::rc::Rc;

@@ -1,6 +1,5 @@
 #![allow(dead_code)]
 
-use crate::common;
 use anyhow::{format_err, Result};
 use arrayref::array_refs;
 use common::{rpc, token};

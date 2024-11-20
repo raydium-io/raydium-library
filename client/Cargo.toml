@@ -9,10 +9,18 @@ path = "src/main.rs"
 
 [features]
 # default is mainnet
-devnet = ["raydium-library/devnet"]
+devnet = [
+    "amm-cli/devnet",
+    "clmm-cli/devnet",
+    "cpswap-cli/devnet",
+    "common/devnet",
+]
 
 [dependencies]
-raydium-library = { path = "../libraries" }
+amm-cli = { path = "../libraries/amm_cli" }
+clmm-cli = { path = "../libraries/clmm_cli" }
+cpswap-cli = { path = "../libraries/cpswap_cli" }
+common = { path = "../libraries/common" }
 spl-token = { version = "4.0.0", features = ["no-entrypoint"] }
 spl-associated-token-account = { version = "2.2.0", features = [
     "no-entrypoint",

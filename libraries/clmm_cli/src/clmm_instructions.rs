@@ -114,7 +114,7 @@ pub fn open_position_instr(
     tick_upper_index: i32,
     tick_array_lower_start_index: i32,
     tick_array_upper_start_index: i32,
-    with_matedata: bool,
+    with_metadata: bool,
 ) -> Result<Vec<Instruction>> {
     let wallet = solana_sdk::signature::read_keypair_file(config.wallet())
         .map_err(|_| format_err!("failed to read keypair from {}", config.wallet()))?;
@@ -197,7 +197,7 @@ pub fn open_position_instr(
             tick_upper_index,
             tick_array_lower_start_index,
             tick_array_upper_start_index,
-            with_matedata,
+            with_metadata,
             base_flag: None,
         })
         .instructions()?;

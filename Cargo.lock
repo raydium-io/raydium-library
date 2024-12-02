@@ -785,7 +785,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "115e54d64eb62cdebad391c19efc9dce4981c690c85a33a12199d99bb9546fee"
 dependencies = [
  "borsh-derive 0.10.4",
- "hashbrown 0.13.2",
+ "hashbrown 0.12.3",
 ]
 
 [[package]]
@@ -1903,6 +1903,9 @@ name = "hashbrown"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
+dependencies = [
+ "ahash 0.7.8",
+]
 
 [[package]]
 name = "hashbrown"
@@ -2556,7 +2559,7 @@ dependencies = [
  "shank",
  "solana-program",
  "spl-associated-token-account",
- "spl-token 4.0.0",
+ "spl-token 3.5.0",
  "thiserror",
 ]
 
@@ -3207,7 +3210,7 @@ dependencies = [
 [[package]]
 name = "raydium-amm-v3"
 version = "0.1.0"
-source = "git+https://github.com/raydium-io/raydium-clmm#17582bf74ea6a19cb87655197604544b1858747c"
+source = "git+https://github.com/raydium-io/raydium-clmm#d50417ef284caf9ad4d46a4cbb878ad3423e86c8"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
@@ -3217,6 +3220,7 @@ dependencies = [
  "solana-program",
  "solana-security-txt",
  "spl-memo",
+ "spl-token-metadata-interface",
  "uint 0.9.5 (git+https://github.com/raydium-io/parity-common)",
 ]
 
@@ -5108,7 +5112,7 @@ dependencies = [
  "fastrand",
  "once_cell",
  "rustix",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -5771,7 +5775,7 @@ version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf221c93e13a30d793f7645a0e7762c55d169dbb0a49671918a2319d289b10bb"
 dependencies = [
- "windows-sys 0.59.0",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]

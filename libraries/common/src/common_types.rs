@@ -21,6 +21,7 @@ use toml::Value;
 pub struct TokenInfo {
     pub key: Pubkey,
     pub mint: Pubkey,
+    pub program: Pubkey,
     pub amount: u64,
     pub decimals: u8,
 }

@@ -73,17 +73,13 @@ pub fn send_without_confirm_txn(client: &RpcClient, txn: &Transaction) -> Result
     )?)
 }
 
-pub fn get_account<T>(client: &RpcClient, addr: &Pubkey) -> Result<Option<T>>
-where
-    T: Clone,
-{
+pub fn get_account(client: &RpcClient, addr: &Pubkey) -> Result<Option<Vec<u8>>> {
     if let Some(account) = client
         .get_account_with_commitment(addr, CommitmentConfig::processed())?
         .value
     {
-        let account_data = account.data.as_slice();
-        let ret = unsafe { &*(&account_data[0] as *const u8 as *const T) };
-        Ok(Some(ret.clone()))
+        let account_data = account.data;
+        Ok(Some(account_data))
     } else {
         Ok(None)
     }

@@ -166,14 +166,18 @@ pub fn get_transfer_fee<'data, S: BaseState>(
     fee
 }
 
-pub fn get_nft_accounts_by_owner(client: &RpcClient, owner: &Pubkey) -> Vec<TokenInfo> {
+pub fn get_nft_accounts_by_owner_with_specified_program(
+    client: &RpcClient,
+    owner: &Pubkey,
+    token_program: Pubkey,
+) -> Vec<TokenInfo> {
     let all_tokens = client
         .get_token_accounts_by_owner(owner, TokenAccountsFilter::ProgramId(spl_token::id()))
         .unwrap();
     let mut nft_accounts_info = Vec::new();
     for keyed_account in all_tokens {
         if let UiAccountData::Json(parsed_account) = keyed_account.account.data {
-            if parsed_account.program == "spl-token" {
+            if parsed_account.program == "spl-token" || parsed_account.program == "spl-token-2022" {
                 if let Ok(TokenAccountType::Account(ui_token_account)) =
                     serde_json::from_value(parsed_account.parsed)
                 {
@@ -202,6 +206,7 @@ pub fn get_nft_accounts_by_owner(client: &RpcClient, owner: &Pubkey) -> Vec<Toke
                         nft_accounts_info.push(TokenInfo {
                             key: token_account,
                             mint: token,
+                            program: token_program,
                             amount: token_amount,
                             decimals: ui_token_account.token_amount.decimals,
                         });

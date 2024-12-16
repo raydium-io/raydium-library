@@ -785,7 +785,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "115e54d64eb62cdebad391c19efc9dce4981c690c85a33a12199d99bb9546fee"
 dependencies = [
  "borsh-derive 0.10.4",
- "hashbrown 0.12.3",
+ "hashbrown 0.13.2",
 ]
 
 [[package]]
@@ -1903,9 +1903,6 @@ name = "hashbrown"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
-dependencies = [
- "ahash 0.7.8",
-]
 
 [[package]]
 name = "hashbrown"
@@ -2559,7 +2556,7 @@ dependencies = [
  "shank",
  "solana-program",
  "spl-associated-token-account",
- "spl-token 3.5.0",
+ "spl-token 4.0.0",
  "thiserror",
 ]
 
@@ -3260,7 +3257,7 @@ dependencies = [
 [[package]]
 name = "raydium_amm"
 version = "0.3.1"
-source = "git+https://github.com/raydium-io/raydium-amm#5f25ad1403a01a336c4407b135bbb9e05f76c648"
+source = "git+https://github.com/raydium-io/raydium-amm#a0fa15cdd91673271fbb46f339c3b908c101ff8f"
 dependencies = [
  "arrayref",
  "arrform",
@@ -3274,6 +3271,7 @@ dependencies = [
  "serde_json",
  "serum_dex",
  "solana-program",
+ "solana-security-txt",
  "spl-associated-token-account",
  "spl-token 4.0.0",
  "thiserror",
@@ -3743,7 +3741,7 @@ dependencies = [
 [[package]]
 name = "serum_dex"
 version = "0.5.10"
-source = "git+https://github.com/raydium-io/openbook-dex#8a755555b625748f9d9e32526a2772717906ee7f"
+source = "git+https://github.com/raydium-io/openbook-dex#db697af23aea283e452b5fb956753171748029b5"
 dependencies = [
  "anchor-lang",
  "arrayref",
@@ -5775,7 +5773,7 @@ version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf221c93e13a30d793f7645a0e7762c55d169dbb0a49671918a2319d289b10bb"
 dependencies = [
- "windows-sys 0.48.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]

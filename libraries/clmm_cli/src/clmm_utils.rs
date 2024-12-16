@@ -643,7 +643,17 @@ pub fn get_nft_accounts_and_positions_by_owner(
     owner: &Pubkey,
     raydium_amm_v3_program: &Pubkey,
 ) -> (Vec<TokenInfo>, Vec<Pubkey>) {
-    let nft_accounts_info = common_utils::get_nft_accounts_by_owner(client, owner);
+    let mut nft_accounts_info = common_utils::get_nft_accounts_by_owner_with_specified_program(
+        client,
+        owner,
+        spl_token::id(),
+    );
+    let spl_2022_nfts = common_utils::get_nft_accounts_by_owner_with_specified_program(
+        client,
+        owner,
+        spl_token_2022::id(),
+    );
+    nft_accounts_info.extend(spl_2022_nfts);
     let user_position_account: Vec<Pubkey> = nft_accounts_info
         .iter()
         .map(|&nft| {

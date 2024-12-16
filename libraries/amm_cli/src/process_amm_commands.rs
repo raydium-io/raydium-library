@@ -133,6 +133,10 @@ pub enum AmmCommands {
         #[clap(short, long)]
         event_data: String,
     },
+    SimulateInfo {
+        #[clap(short, long)]
+        pool_id: Pubkey,
+    },
 }
 pub fn process_amm_commands(
     command: AmmCommands,
@@ -446,10 +450,10 @@ pub fn process_amm_commands(
         } => {
             if pool_id.is_some() {
                 // fetch specified pool
-                let pool_state =
-                    rpc::get_account::<raydium_amm::state::AmmInfo>(&rpc_client, &pool_id.unwrap())
-                        .unwrap()
-                        .unwrap();
+                let amm_data = rpc::get_account(&rpc_client, &pool_id.unwrap())
+                    .unwrap()
+                    .unwrap();
+                let pool_state = raydium_amm::state::AmmInfo::load_from_bytes(&amm_data).unwrap();
                 println!("{:#?}", pool_state);
             } else {
                 // fetch pool by filters
@@ -502,6 +506,29 @@ pub fn process_amm_commands(
         AmmCommands::DecodeEvent { event_data } => {
             decode_amm_ix_event::handle_program_event(event_data.as_str(), false)?;
             return Ok(None);
+        }
+        AmmCommands::SimulateInfo { pool_id } => {
+            let amm_keys = amm_utils::load_amm_keys(&rpc_client, &config.amm_program(), &pool_id)?;
+            let market_state = openbook::get_keys_for_market(
+                &rpc_client,
+                &amm_keys.market_program,
+                &amm_keys.market,
+            )
+            .unwrap();
+
+            let simulate_instr = raydium_amm::instruction::simulate_get_pool_info(
+                &config.amm_program(),
+                &pool_id,
+                &amm_keys.amm_authority,
+                &amm_keys.amm_open_order,
+                &amm_keys.amm_coin_vault,
+                &amm_keys.amm_pc_vault,
+                &amm_keys.amm_lp_mint,
+                &amm_keys.market,
+                &market_state.event_q,
+                None,
+            )?;
+            return Ok(Some(vec![simulate_instr]));
         }
     }
 }

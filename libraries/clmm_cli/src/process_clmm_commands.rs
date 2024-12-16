@@ -62,7 +62,10 @@ pub enum ClmmCommands {
         base_token1: bool,
         /// Whether need to create metadata for the NFT mint of the position.
         #[arg(short, long, action)]
-        with_metadata: bool,
+        without_metadata: bool,
+        /// The default is token_2022 NFT. If specified, create mpl NFT
+        #[arg(short, long, action)]
+        traditional_nft: bool,
     },
     IncreaseLiquidity {
         /// The specified pool of the assets deposite to
@@ -206,9 +209,11 @@ pub fn process_clmm_commands(
             tick_upper_price,
             amount_specified,
             base_token1,
-            with_metadata,
+            without_metadata,
+            traditional_nft,
         } => {
             let base_token0 = !base_token1;
+            let with_metadata = !without_metadata;
             let result = clmm_utils::calculate_liquidity_change(
                 &rpc_client,
                 pool_id,
@@ -287,27 +292,51 @@ pub fn process_clmm_commands(
                 let mut remaining_accounts = Vec::new();
                 remaining_accounts.push(AccountMeta::new(tickarray_bitmap_extension, false));
 
-                let open_position_instr = clmm_instructions::open_position_instr(
-                    &config.clone(),
-                    pool_id,
-                    result.vault0,
-                    result.vault1,
-                    result.mint0,
-                    result.mint1,
-                    nft_mint_key,
-                    payer_pubkey,
-                    deposit_token0,
-                    deposit_token1,
-                    remaining_accounts,
-                    result.liquidity,
-                    result.amount_0,
-                    result.amount_1,
-                    result.tick_lower_index,
-                    result.tick_upper_index,
-                    result.tick_array_lower_start_index,
-                    result.tick_array_upper_start_index,
-                    with_metadata,
-                )?;
+                let open_position_instr = if traditional_nft {
+                    clmm_instructions::open_position_instr(
+                        &config.clone(),
+                        pool_id,
+                        result.vault0,
+                        result.vault1,
+                        result.mint0,
+                        result.mint1,
+                        nft_mint_key,
+                        payer_pubkey,
+                        deposit_token0,
+                        deposit_token1,
+                        remaining_accounts,
+                        result.liquidity,
+                        result.amount_0,
+                        result.amount_1,
+                        result.tick_lower_index,
+                        result.tick_upper_index,
+                        result.tick_array_lower_start_index,
+                        result.tick_array_upper_start_index,
+                        with_metadata,
+                    )?
+                } else {
+                    clmm_instructions::open_position_with_token22_nft_instr(
+                        &config.clone(),
+                        pool_id,
+                        result.vault0,
+                        result.vault1,
+                        result.mint0,
+                        result.mint1,
+                        nft_mint_key,
+                        payer_pubkey,
+                        deposit_token0,
+                        deposit_token1,
+                        remaining_accounts,
+                        result.liquidity,
+                        result.amount_0,
+                        result.amount_1,
+                        result.tick_lower_index,
+                        result.tick_upper_index,
+                        result.tick_array_lower_start_index,
+                        result.tick_array_upper_start_index,
+                        with_metadata,
+                    )?
+                };
                 return Ok(Some(open_position_instr));
             } else {
                 // personal position exist

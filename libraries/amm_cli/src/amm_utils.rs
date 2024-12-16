@@ -353,7 +353,8 @@ pub fn load_amm_keys(
     amm_program: &Pubkey,
     amm_pool: &Pubkey,
 ) -> Result<AmmKeys> {
-    let amm = rpc::get_account::<raydium_amm::state::AmmInfo>(client, &amm_pool)?.unwrap();
+    let amm_data = rpc::get_account(client, &amm_pool)?.unwrap();
+    let amm = raydium_amm::state::AmmInfo::load_from_bytes(&amm_data).unwrap();
     Ok(AmmKeys {
         amm_pool: *amm_pool,
         amm_target: amm.target_orders,

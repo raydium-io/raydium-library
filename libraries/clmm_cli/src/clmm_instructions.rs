@@ -31,12 +31,14 @@ pub fn create_pool_instr(
     let client = Client::new(cluster, Rc::new(wallet));
     let program = client.program(config.clmm_program())?;
 
+    let nonce = 1u8;
     let (pool_account_key, __bump) = Pubkey::find_program_address(
         &[
             POOL_SEED.as_bytes(),
             amm_config.to_bytes().as_ref(),
             token_mint_0.to_bytes().as_ref(),
             token_mint_1.to_bytes().as_ref(),
+            &nonce.to_be_bytes(),
         ],
         &program.id(),
     );
@@ -90,6 +92,7 @@ pub fn create_pool_instr(
         .args(raydium_clmm_instruction::CreatePool {
             sqrt_price_x64,
             open_time,
+            nonce: Some(1),
         })
         .instructions()?;
     Ok(instructions)

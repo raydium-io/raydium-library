@@ -7,7 +7,7 @@ edition = "2021"
 devnet = ["raydium_amm/devnet"]
 
 [dependencies]
-anchor-client = "=0.29.0"
+anchor-client = { version = "=0.29.0", features = ["async"] }
 anchor-lang = "=0.29.0"
 serum_dex = { version = "0.5.10", git = "https://github.com/raydium-io/openbook-dex", default-features = false, features = [
     "client",

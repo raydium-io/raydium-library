@@ -7,7 +7,7 @@ edition = "2021"
 devnet = ["raydium-amm-v3/devnet"]
 
 [dependencies]
-anchor-client = "=0.29.0"
+anchor-client = { version = "=0.29.0", features = ["async"] }
 anchor-lang = "=0.29.0"
 anchor-spl = { version = "=0.29.0", features = ["memo", "metadata"] }
 raydium-amm-v3 = { git = "https://github.com/raydium-io/raydium-clmm", features = [

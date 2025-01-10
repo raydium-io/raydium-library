@@ -110,7 +110,7 @@ impl Default for CommonConfig {
     #[cfg(feature = "devnet")]
     fn default() -> Self {
         CommonConfig {
-            http_url: Some("https://api.mainnet-beta.solana.com".to_string()),
+            http_url: Some("https://api.devnet.solana.com".to_string()),
             ws_url: Some("wss://api.devnet.solana.com".to_string()),
             // Default is empty.
             // Must be specified by user, as setting a default wallet may be dangerous.

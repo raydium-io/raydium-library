@@ -23,6 +23,7 @@ pub fn create_pool_instr(
     token_program_1: Pubkey,
     sqrt_price_x64: u128,
     open_time: u64,
+    nonce: u8,
 ) -> Result<Vec<Instruction>> {
     let wallet = solana_sdk::signature::read_keypair_file(config.wallet())
         .map_err(|_| format_err!("failed to read keypair from {}", config.wallet()))?;
@@ -31,7 +32,6 @@ pub fn create_pool_instr(
     let client = Client::new(cluster, Rc::new(wallet));
     let program = client.program(config.clmm_program())?;
 
-    let nonce = 1u8;
     let (pool_account_key, __bump) = Pubkey::find_program_address(
         &[
             POOL_SEED.as_bytes(),

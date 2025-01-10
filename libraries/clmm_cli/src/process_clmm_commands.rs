@@ -33,6 +33,9 @@ pub enum ClmmCommands {
         /// The time of the pool is allowed to swap.
         #[arg(short, long, default_value_t = 0)]
         open_time: u64,
+        /// The nonce of the pool
+        #[arg(short, long, default_value_t = 1)]
+        nonce: u8,
     },
     OpenPosition {
         /// The specified pool of the assets deposite to
@@ -187,6 +190,7 @@ pub fn process_clmm_commands(
             amm_config,
             price,
             open_time,
+            nonce,
         } => {
             let result = clmm_utils::create_pool_price(&rpc_client, mint0, mint1, price)?;
             let create_pool_instr = clmm_instructions::create_pool_instr(
@@ -198,6 +202,7 @@ pub fn process_clmm_commands(
                 result.mint1_token_program,
                 result.sqrt_price_x64,
                 open_time,
+                nonce,
             )?;
             return Ok(Some(create_pool_instr));
         }

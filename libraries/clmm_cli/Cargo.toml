@@ -13,7 +13,7 @@ anchor-spl = { version = "=0.29.0", features = ["memo", "metadata"] }
 raydium-amm-v3 = { git = "https://github.com/raydium-io/raydium-clmm", features = [
     "client",
     "no-entrypoint",
-], branch = "random_pool" }
+], rev = "043d96eae3b01593c035a84c8089bde7865b0c69" }
 common = { path = "../common" }
 spl-token = { version = "=4.0.0", features = ["no-entrypoint"] }
 spl-associated-token-account = { version = "2.2.0", features = [

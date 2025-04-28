@@ -221,7 +221,7 @@ pub fn process_cpswap_commands(
                 token1_program,
                 user_token0,
                 user_token1,
-                raydium_cp_swap::create_pool_fee_reveiver::id(),
+                raydium_cp_swap::create_pool_fee_reveiver::ID,
                 amm_config,
                 random_pool_id,
                 init_amount_0,

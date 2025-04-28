@@ -7,6 +7,7 @@ use solana_account_decoder::{
 };
 use solana_client::{rpc_client::RpcClient, rpc_request::TokenAccountsFilter};
 use solana_sdk::{account::Account as CliAccount, pubkey::Pubkey, signer::keypair::Keypair};
+use anchor_lang::solana_program::program_pack::Pack;
 use spl_token_2022::{
     extension::{
         confidential_transfer::{ConfidentialTransferAccount, ConfidentialTransferMint},
@@ -130,7 +131,7 @@ pub fn get_pool_mints_transfer_fee(
 }
 
 /// Calculate the fee for output amount
-pub fn get_transfer_inverse_fee<'data, S: BaseState>(
+pub fn get_transfer_inverse_fee<'data, S: BaseState + Pack>(
     account_state: &StateWithExtensions<'data, S>,
     epoch: u64,
     post_fee_amount: u64,
@@ -151,7 +152,7 @@ pub fn get_transfer_inverse_fee<'data, S: BaseState>(
 }
 
 /// Calculate the fee for input amount
-pub fn get_transfer_fee<'data, S: BaseState>(
+pub fn get_transfer_fee<'data, S: BaseState + Pack>(
     account_state: &StateWithExtensions<'data, S>,
     epoch: u64,
     pre_fee_amount: u64,
@@ -218,7 +219,7 @@ pub fn get_nft_accounts_by_owner_with_specified_program(
     nft_accounts_info
 }
 
-pub fn get_account_extensions<'data, S: BaseState>(
+pub fn get_account_extensions<'data, S: BaseState + Pack>(
     account_state: &StateWithExtensions<'data, S>,
 ) -> Vec<ExtensionStruct> {
     let mut extensions: Vec<ExtensionStruct> = Vec::new();

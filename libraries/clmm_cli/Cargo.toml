@@ -7,37 +7,32 @@ edition = "2021"
 devnet = ["raydium-amm-v3/devnet"]
 
 [dependencies]
-anchor-client = "=0.29.0"
-anchor-lang = "=0.29.0"
-anchor-spl = { version = "=0.29.0", features = ["memo", "metadata"] }
-raydium-amm-v3 = { git = "https://github.com/raydium-io/raydium-clmm", features = [
-    "client",
-    "no-entrypoint",
-] }
+anchor-client = { workspace = true }
+anchor-lang = { workspace = true }
+anchor-spl = { workspace = true, features = ["memo", "metadata"] }
+raydium-amm-v3 = { git = "https://github.com/Vai3soh/raydium-clmm.git", branch = "solana-v2", features = ["client","no-entrypoint"] }
 common = { path = "../common" }
-spl-token = { version = "=4.0.0", features = ["no-entrypoint"] }
-spl-associated-token-account = { version = "2.2.0", features = [
-    "no-entrypoint",
-] }
-spl-memo = "=4.0.0"
-spl-token-2022 = { version = "=0.9.0", features = ["no-entrypoint"] }
-solana-client = "<1.17.0"
-solana-sdk = "<1.17.0"
-solana-account-decoder = "<1.17.0"
-solana-transaction-status = "<1.17.0"
-anyhow = "1.0.53"
+spl-token = { workspace = true, features = ["no-entrypoint"] }
+spl-associated-token-account = { workspace = true, features = ["no-entrypoint"] }
+spl-memo = { workspace = true }
+spl-token-2022 = { workspace = true, features = ["no-entrypoint"] }
+solana-client = { workspace = true }
+solana-sdk = { workspace = true }
+solana-account-decoder = { workspace = true }
+solana-transaction-status = { workspace = true }
+anyhow = { workspace = true }
 rand = "0.7.3"
 bytemuck = { version = "1.7.3" }
-serde_json = { version = "1.0.78" }
-serde = { version = "1.0", features = ["derive"] }
-base64 = "0.22.1"
-bs58 = { version = "0.5.1" }
-bincode = { version = "1.3.3" }
-arrayref = "0.3.6"
-clap = { version = "4.1.8", features = ["derive"] }
-toml = "0.8.19"
+serde_json = { workspace = true }
+serde = { workspace = true }
+base64 = { workspace = true }
+bs58 = { workspace = true }
+bincode = { workspace = true }
+arrayref = { workspace = true }
+clap = { workspace = true }
+toml = { workspace = true }
 colorful = "0.2.2"
-hex = "0.4.3"
+hex = { workspace = true }
 
 [lib]
 crate-type = ["cdylib", "lib"]

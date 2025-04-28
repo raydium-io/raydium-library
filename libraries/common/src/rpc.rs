@@ -123,6 +123,7 @@ pub fn get_program_accounts_with_filters(
                     ..RpcAccountInfoConfig::default()
                 },
                 with_context: Some(false),
+                ..RpcProgramAccountsConfig::default()
             },
         )
         .unwrap();

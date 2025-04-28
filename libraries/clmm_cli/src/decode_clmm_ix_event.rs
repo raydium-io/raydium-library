@@ -6,6 +6,7 @@ use common::{common_types, InstructionDecodeType};
 use raydium_amm_v3::instruction;
 use raydium_amm_v3::instructions::*;
 use raydium_amm_v3::states::*;
+use anchor_lang::__private::base64::{Engine, engine::general_purpose::STANDARD};
 
 pub fn handle_program_instruction(
     instr_data: &str,
@@ -39,12 +40,8 @@ pub fn handle_program_instruction(
     }
 
     let mut ix_data: &[u8] = &data[..];
-    let disc: [u8; 8] = {
-        let mut disc = [0; 8];
-        disc.copy_from_slice(&data[..8]);
-        ix_data = &ix_data[8..];
-        disc
-    };
+    let disc: &[u8] = &ix_data[..8];
+    ix_data = &ix_data[8..];
     // println!("{:?}", disc);
 
     match disc {
@@ -490,7 +487,7 @@ pub fn handle_program_event(log_event: &str, with_prefix: bool) -> Result<(), Cl
     } else {
         Some(log_event)
     } {
-        let borsh_bytes = match anchor_lang::__private::base64::decode(log) {
+        let borsh_bytes = match STANDARD.decode(log) {
             Ok(borsh_bytes) => borsh_bytes,
             _ => {
                 println!("Could not base64 decode log: {}", log);
@@ -499,12 +496,8 @@ pub fn handle_program_event(log_event: &str, with_prefix: bool) -> Result<(), Cl
         };
 
         let mut slice: &[u8] = &borsh_bytes[..];
-        let disc: [u8; 8] = {
-            let mut disc = [0; 8];
-            disc.copy_from_slice(&borsh_bytes[..8]);
-            slice = &slice[8..];
-            disc
-        };
+        let disc: &[u8] = &slice[..8];
+        slice = &slice[8..];
         match disc {
             ConfigChangeEvent::DISCRIMINATOR => {
                 println!("{:#?}", decode_event::<ConfigChangeEvent>(&mut slice)?);

@@ -7,31 +7,23 @@ edition = "2021"
 devnet = ["raydium_amm/devnet"]
 
 [dependencies]
-anchor-client = "=0.29.0"
-anchor-lang = "=0.29.0"
-serum_dex = { version = "0.5.10", git = "https://github.com/raydium-io/openbook-dex", default-features = false, features = [
-    "client",
-    "no-entrypoint",
-] }
-raydium_amm = { git = "https://github.com/raydium-io/raydium-amm", default-features = false, features = [
-    "client",
-    "no-entrypoint",
-] }
+anchor-client = { workspace = true }
+anchor-lang = { workspace = true }
+serum_dex = { git = "https://github.com/Vai3soh/openbook-dex.git", branch = "feature/update-solana-program-2.1.0", package= "serum_dex", default-features = false, features = ["client","program","no-entrypoint"] }
+raydium_amm = { git = "https://github.com/Vai3soh/raydium-amm.git", branch = "vendor-update-openbook-dex-solana-v2", default-features = false, features = ["client","no-entrypoint"] }
 common = { path = "../common" }
-spl-token = { version = "=4.0.0", features = ["no-entrypoint"] }
-spl-associated-token-account = { version = "2.2.0", features = [
-    "no-entrypoint",
-] }
-spl-token-2022 = { version = "=0.9.0", features = ["no-entrypoint"] }
-solana-client = "<1.17.0"
-solana-sdk = "<1.17.0"
-anyhow = "1.0.53"
+spl-token = { workspace = true, features = ["no-entrypoint"] }
+spl-associated-token-account = { workspace = true, features = ["no-entrypoint"] }
+spl-token-2022 = { workspace = true, features = ["no-entrypoint"] }
+solana-client = { workspace = true }
+solana-sdk = { workspace = true }
+anyhow = { workspace = true }
 safe-transmute = "0.11.2"
-arrayref = "0.3.6"
-clap = { version = "4.1.8", features = ["derive"] }
-toml = "0.8.19"
-hex = "0.4.3"
-bs58 = { version = "0.5.1" }
+arrayref = { workspace = true }
+clap = { workspace = true }
+toml = { workspace = true }
+hex = { workspace = true }
+bs58 = { workspace = true }
 
 [lib]
 crate-type = ["cdylib", "lib"]

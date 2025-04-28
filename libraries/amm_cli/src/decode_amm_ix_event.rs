@@ -2,6 +2,7 @@ use anchor_client::ClientError;
 use anyhow::Result;
 use common::{common_types, InstructionDecodeType};
 use raydium_amm::{instruction::*, log::decode_ray_log};
+use anchor_lang::__private::base64::{Engine, engine::general_purpose::STANDARD};
 
 pub fn handle_program_instruction(
     instr_data: &str,
@@ -13,7 +14,7 @@ pub fn handle_program_instruction(
             data = hex::decode(instr_data).unwrap();
         }
         InstructionDecodeType::Base64 => {
-            let borsh_bytes = match anchor_lang::__private::base64::decode(instr_data) {
+            let borsh_bytes = match STANDARD.decode(instr_data) {
                 Ok(borsh_bytes) => borsh_bytes,
                 _ => {
                     println!("Could not base64 decode instruction: {}", instr_data);
